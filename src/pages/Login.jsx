@@ -1,0 +1,97 @@
+import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import { Coffee, Mail, Lock } from 'lucide-react'
+
+function Login() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  
+  const { signIn } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setLoading(true)
+
+    const result = await signIn(email, password)
+
+    if (result.success) {
+      navigate('/')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="login-container">
+      <div className="login-background">
+        <div className="circle circle-1"></div>
+        <div className="circle circle-2"></div>
+        <div className="circle circle-3"></div>
+      </div>
+
+      <div className="login-card">
+        <div className="login-header">
+          <div className="logo">
+            <Coffee size={48} />
+          </div>
+          <h1>POS Restaurante</h1>
+          <p>Sistema de Punto de Venta</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label>
+              <Mail size={16} /> Correo Electrónico
+            </label>
+            <input
+              type="email"
+              className="form-control"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="ejemplo@restaurante.com"
+              required
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>
+              <Lock size={16} /> Contraseña
+            </label>
+            <input
+              type="password"
+              className="form-control"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+            />
+          </div>
+
+          <button type="submit" className="btn btn-primary btn-login" disabled={loading}>
+            {loading ? (
+              <span className="spinner-small"></span>
+            ) : (
+              '🔐 Iniciar Sesión'
+            )}
+          </button>
+        </form>
+
+        <div className="login-demo">
+          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+            👤 Credenciales de Acceso:
+          </p>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            <p><strong>Admin:</strong> admin@restaurante.com</p>
+            <p><strong>Contraseña:</strong> 123456</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default Login
