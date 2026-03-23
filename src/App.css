@@ -222,21 +222,29 @@ body {
    RESPONSIVE - MOBILE
    =========================== */
 @media (max-width: 768px) {
-  /* Ocultar sidebar desktop */
+  /* Ocultar sidebar desktop FORZOSAMENTE */
   .sidebar {
-    display: none;
+    display: none !important;
   }
   
-  /* Mostrar nav mobile */
+  /* Mostrar nav mobile FORZOSAMENTE */
   .mobile-nav {
-    display: block;
+    display: block !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--secondary);
+    padding: 0.75rem;
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
   }
   
-  /* Ajustar contenido principal */
+  /* Ajustar contenido principal FORZOSAMENTE */
   .main-content {
-    margin-left: 0;
-    padding: 1rem;
-    padding-bottom: 80px; /* Espacio para el nav mobile */
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    padding-bottom: 80px !important; /* Espacio para el nav mobile */
   }
   
   /* Page header más compacto */
@@ -254,11 +262,11 @@ body {
     font-size: 0.875rem;
   }
   
-  /* Grids a 1 columna */
+  /* Grids a 1 columna FORZOSAMENTE */
   .grid-2,
   .grid-3,
   .grid-4 {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
   
   /* Stats grid responsive */
