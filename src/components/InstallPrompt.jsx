@@ -72,57 +72,61 @@ function InstallPrompt() {
       {!isIOS && showPrompt && deferredPrompt && (
         <div style={{
           position: 'fixed',
-          bottom: '1rem',
+          top: '1rem',
           left: '1rem',
-          right: '1rem',
           background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
           color: 'white',
-          padding: '1rem 1.25rem',
-          borderRadius: '0.75rem',
+          padding: '0.75rem 1rem',
+          borderRadius: '0.5rem',
           zIndex: 9998,
           display: 'flex',
           alignItems: 'center',
-          gap: '1rem',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           border: '1px solid rgba(255,255,255,0.1)',
-          animation: 'slideUp 0.3s ease-out'
+          animation: 'slideInLeft 0.4s ease-out',
+          maxWidth: '380px'
         }}>
-          <div style={{
-            width: 48,
-            height: 48,
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
-          }}>
-            <Smartphone size={24} style={{color: 'white'}} />
-          </div>
-          
-          <div style={{flex: 1}}>
-            <div style={{fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem'}}>
-              📲 Instala la App
+          <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1}}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Smartphone size={18} style={{color: 'white'}} />
             </div>
-            <div style={{fontSize: '0.75rem', color: '#94a3b8'}}>
-              Acceso rápido desde tu pantalla de inicio
+            <div style={{flex: 1, minWidth: 0}}>
+              <div style={{fontWeight: 600, fontSize: '0.8125rem', whiteSpace: 'nowrap'}}>
+                Instala la App
+              </div>
             </div>
           </div>
           
-          <div style={{display: 'flex', gap: '0.5rem'}}>
+          <div style={{display: 'flex', gap: '0.5rem', flexShrink: 0}}>
             <button
               onClick={handleClose}
               style={{
-                background: 'rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.15)',
                 border: 'none',
-                color: '#94a3b8',
+                color: 'white',
                 padding: '0.5rem',
-                borderRadius: '0.5rem',
+                borderRadius: '0.375rem',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                minWidth: '36px',
+                height: '36px',
+                transition: 'background 0.2s'
               }}
+              onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.25)'}
+              onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.15)'}
             >
               <X size={18} />
             </button>
@@ -130,15 +134,16 @@ function InstallPrompt() {
               onClick={handleInstallClick}
               className="btn btn-primary"
               style={{
+                fontSize: '0.8125rem',
+                padding: '0.5rem 0.875rem',
+                fontWeight: 600,
+                height: '36px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.875rem',
-                padding: '0.625rem 1rem',
-                fontWeight: 600
+                gap: '0.5rem'
               }}
             >
-              <Download size={18} />
+              <Download size={16} />
               Instalar
             </button>
           </div>
@@ -149,59 +154,81 @@ function InstallPrompt() {
       {isIOS && (
         <div style={{
           position: 'fixed',
-          bottom: '1rem',
+          top: '1rem',
           left: '1rem',
-          right: '1rem',
           background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
           color: 'white',
-          padding: '1rem 1.25rem',
-          borderRadius: '0.75rem',
+          padding: '0.75rem 1rem',
+          borderRadius: '0.5rem',
           zIndex: 9998,
           display: 'flex',
           alignItems: 'center',
-          gap: '1rem',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           border: '1px solid rgba(255,255,255,0.1)',
-          animation: 'slideUp 0.3s ease-out'
+          animation: 'slideInLeft 0.4s ease-out',
+          maxWidth: '380px'
         }}>
-          <div style={{
-            width: 48,
-            height: 48,
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
-          }}>
-            <Smartphone size={24} style={{color: 'white'}} />
-          </div>
-          
-          <div style={{flex: 1}}>
-            <div style={{fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem'}}>
-              🍎 Instala en iPhone
-            </div>
-            <div style={{fontSize: '0.75rem', color: '#94a3b8'}}>
-              Toca Compartir → "Agregar a inicio"
-            </div>
-          </div>
-          
-          <button
-            onClick={handleClose}
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              border: 'none',
-              color: '#94a3b8',
-              padding: '0.5rem',
-              borderRadius: '0.5rem',
-              cursor: 'pointer',
+          <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1}}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <X size={18} />
-          </button>
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Smartphone size={18} style={{color: 'white'}} />
+            </div>
+            <div style={{flex: 1, minWidth: 0}}>
+              <div style={{fontWeight: 600, fontSize: '0.8125rem', whiteSpace: 'nowrap'}}>
+                Instala la App
+              </div>
+            </div>
+          </div>
+
+          <div style={{display: 'flex', gap: '0.5rem', flexShrink: 0}}>
+            <button
+              onClick={handleClose}
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                color: 'white',
+                padding: '0.5rem',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '36px',
+                height: '36px',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.25)'}
+              onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.15)'}
+            >
+              <X size={18} />
+            </button>
+            <button
+              onClick={handleInstallClick}
+              className="btn btn-primary"
+              style={{
+                fontSize: '0.8125rem',
+                padding: '0.5rem 0.875rem',
+                fontWeight: 600,
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <Download size={16} />
+              Instalar
+            </button>
+          </div>
         </div>
       )}
     </>
