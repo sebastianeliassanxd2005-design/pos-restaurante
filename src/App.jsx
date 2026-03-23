@@ -167,7 +167,7 @@ function SidebarMenu({ isMobile, isOpen, onClose }) {
         )}
 
         {/* Menu Items */}
-        <div style={{flex:1,overflowY:'auto',padding:'0.75rem',display:'flex',flexDirection:'column',gap:'0.25rem'}}>
+        <div style={{flex:1,overflowY:'auto',overflowX:'hidden',padding:'0.75rem',display:'flex',flexDirection:'column',gap:'0.25rem',scrollbarWidth:'none',msOverflowStyle:'none'}}>
           {/* Main Section */}
           {!isMobile && (
             <div style={{padding:'0.5rem 0.5rem',fontSize:'0.65rem',textTransform:'uppercase',color:'#64748b',fontWeight:700,letterSpacing:'0.1em'}}>
