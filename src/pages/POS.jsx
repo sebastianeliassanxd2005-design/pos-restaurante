@@ -20,6 +20,7 @@ function POS() {
   const [showNotes, setShowNotes] = useState(false)
   const [noteItemIndex, setNoteItemIndex] = useState(null)
   const [noteText, setNoteText] = useState('')
+  const [showCartMobile, setShowCartMobile] = useState(false) // Controlar carrito en móvil
   const toast = useToast()
 
   useEffect(() => {
@@ -338,7 +339,13 @@ function POS() {
                   <button 
                     className="btn btn-primary" 
                     style={{ 
-                      padding: window.innerWidth <= 768 ? '0.5rem 0.75rem' : '0.375rem 0.75rem'
+                      padding: window.innerWidth <= 768 ? '0.375rem 0.625rem' : '0.375rem 0.75rem',
+                      minWidth: window.innerWidth <= 768 ? '36px' : 'auto',
+                      height: window.innerWidth <= 768 ? '36px' : 'auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '8px'
                     }}
                   >
                     <Plus size={window.innerWidth <= 768 ? 18 : 16} />
@@ -354,14 +361,75 @@ function POS() {
           width: window.innerWidth <= 768 ? '100%' : '350px',
           flexShrink: 0
         }}>
+          {/* Botón para mostrar/ocultar carrito en móvil */}
+          {window.innerWidth <= 768 && cart.length > 0 && (
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowCartMobile(!showCartMobile)}
+              style={{
+                width: '100%',
+                marginBottom: '1rem',
+                padding: '0.875rem 1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.925rem',
+                fontWeight: 600
+              }}
+            >
+              <span style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                🛒 Orden Actual
+              </span>
+              <span style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                <span style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700
+                }}>{cart.reduce((sum, item) => sum + item.quantity, 0)} items</span>
+                {showCartMobile ? '▲' : '▼'}
+              </span>
+            </button>
+          )}
+          
+          {/* Carrito - oculto en móvil si showCartMobile es false */}
           <div className="card" style={{ 
             position: window.innerWidth <= 768 ? 'relative' : 'sticky', 
-            top: window.innerWidth <= 768 ? '0' : '1rem' 
+            top: window.innerWidth <= 768 ? '0' : '1rem',
+            display: (window.innerWidth <= 768 && !showCartMobile && cart.length > 0) ? 'none' : 'block'
           }}>
-            <h3 style={{ 
-              marginBottom: '1rem',
-              fontSize: window.innerWidth <= 768 ? '1.0625rem' : '1.125rem'
-            }}>🛒 Orden Actual</h3>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '1rem'
+            }}>
+              <h3 style={{ 
+                fontSize: window.innerWidth <= 768 ? '1.0625rem' : '1.125rem',
+                margin: 0
+              }}>🛒 Orden Actual</h3>
+              {window.innerWidth <= 768 && showCartMobile && (
+                <button
+                  onClick={() => setShowCartMobile(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    color: 'white',
+                    padding: '0.5rem',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '36px',
+                    height: '36px'
+                  }}
+                >
+                  <span style={{fontSize: '1.25rem', lineHeight: 1}}>✕</span>
+                </button>
+              )}
+            </div>
             
             {cart.length === 0 ? (
               <div className="empty-state">
