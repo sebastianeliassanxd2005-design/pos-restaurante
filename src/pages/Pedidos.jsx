@@ -73,27 +73,30 @@ function Pedidos() {
     }, 15000) // Cada 15 segundos
     
     return () => clearInterval(interval)
-  }, [])
+  }, [filtroEstado]) // Se re-ejecuta cuando cambia el filtro de estado
 
   async function fetchPedidos() {
     try {
       const hoy = new Date()
       hoy.setHours(0, 0, 0, 0)
       
-      let query = supabase
+      // Siempre obtenemos TODOS los pedidos del día (sin filtrar por estado en la query)
+      // El filtrado por estado se hace DESPUÉS en el frontend para mostrar correctamente
+      const { data, error } = await supabase
         .from('orders')
         .select('*, tables (name)')
         .gte('created_at', hoy.toISOString())
         .order('created_at', { ascending: false })
 
-      if (filtroEstado !== PEDIDOS_ESTADOS.ALL) {
-        query = query.eq('status', filtroEstado)
-      }
-
-      const { data, error } = await query
-
       if (error) throw error
-      setPedidos(data || [])
+      
+      // Filtrar por estado seleccionado (solo si no es 'all')
+      let pedidosData = data || []
+      if (filtroEstado !== PEDIDOS_ESTADOS.ALL) {
+        pedidosData = pedidosData.filter(pedido => pedido.status === filtroEstado)
+      }
+      
+      setPedidos(pedidosData)
     } catch (error) {
       console.error('Error fetching pedidos:', error)
       toast.error('Error al cargar pedidos')
@@ -125,9 +128,16 @@ function Pedidos() {
 
       if (error) throw error
 
+      // Actualizar localmente el estado del pedido inmediatamente
+      setPedidos(prev => prev.map(p => 
+        p.id === pedidoId ? { ...p, status: nuevoEstado } : p
+      ))
+
       const estadoLabel = ESTADOS_CONFIG[nuevoEstado]?.label || nuevoEstado
       toast.success(`Pedido actualizado: ${estadoLabel}`)
-      fetchPedidos()
+      
+      // Recargar para asegurar consistencia
+      await fetchPedidos()
     } catch (error) {
       toast.error('Error al actualizar pedido')
     }
