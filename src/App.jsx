@@ -389,7 +389,11 @@ function AppLayout() {
       }}>
         <div style={{padding: !isMobile ? '1.25rem' : '0.875rem'}}>
           <Routes>
-            <Route path="/" element={profile?.role === 'waiter' ? <Navigate to="/mi-turno" replace /> : <Dashboard />} />
+            <Route path="/" element={
+              profile?.role === 'waiter' ? <Navigate to="/mi-turno" replace /> : 
+              profile?.role === 'kitchen' ? <Navigate to="/cocina" replace /> : 
+              <Dashboard />
+            } />
             <Route path="/mi-turno" element={<MiTurno />} />
             <Route path="/cocina" element={<Cocina />} />
             <Route path="/mesas" element={<Tables />} />
