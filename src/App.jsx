@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import { LayoutDashboard, Utensils, ShoppingBag, Receipt, ClipboardList, DollarSign, LogOut, User, Users, Calendar, BarChart3, Database, Menu, X } from 'lucide-react'
 import { ToastProvider } from './context/ToastContext'
@@ -19,22 +19,22 @@ import './index.css'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
-  
+
   if (loading) {
     return <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh'}}><div style={{width:40,height:40,border:'4px solid #e2e8f0',borderTopColor:'#dc2626',borderRadius:'50%',animation:'spin 1s linear infinite'}}></div></div>
   }
-  
+
   if (!user) {
     return <Navigate to="/login" replace />
   }
-  
+
   return children
 }
 
-function MobileMenu({ isOpen, onClose }) {
+function SidebarMenu({ isMobile, isOpen, onClose }) {
   const location = useLocation()
   const { profile, signOut } = useAuth()
-  
+
   const menuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/mesas', icon: Utensils, label: 'Mesas' },
@@ -50,45 +50,49 @@ function MobileMenu({ isOpen, onClose }) {
     { path: '/sistema', icon: Database, label: 'Sistema' },
   ] : []
 
+  const menuStyle = {
+    position: isMobile ? 'fixed' : 'relative',
+    top: 0,
+    left: 0,
+    width: isMobile ? '80%' : '260px',
+    maxWidth: isMobile ? '300px' : '260px',
+    height: isMobile ? '100vh' : '100vh',
+    background: '#1e293b',
+    color: 'white',
+    zIndex: isMobile ? 1000 : 100,
+    transform: isMobile && !isOpen ? 'translateX(-100%)' : 'translateX(0)',
+    transition: isMobile ? 'transform 0.3s ease' : 'none',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: isMobile ? 'none' : '4px 0 10px rgba(0,0,0,0.1)'
+  }
+
   return (
     <>
-      {/* Overlay */}
-      {isOpen && <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:999}} onClick={onClose} />}
-      
-      {/* Menú lateral */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '80%',
-        maxWidth: '300px',
-        height: '100vh',
-        background: '#1e293b',
-        color: 'white',
-        zIndex: 1000,
-        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.3s ease',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      {/* Overlay solo para móvil */}
+      {isMobile && isOpen && <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:999}} onClick={onClose} />}
+
+      <div style={menuStyle}>
         {/* Header */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'1rem',borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'1.25rem 1rem',borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
           <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-            <div style={{width:40,height:40,borderRadius:'50%',background:'#dc2626',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <User size={20} />
-            </div>
-            <div>
-              <div style={{fontWeight:600,fontSize:'0.875rem'}}>{profile?.full_name || 'Usuario'}</div>
-              <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile?.role || 'waiter'}</div>
-            </div>
+            <img src="/logo.svg" alt="Logo" style={{width:40,height:40}} />
+            {!isMobile && (
+              <div>
+                <div style={{fontWeight:700,fontSize:'0.875rem'}}>POS Restaurante</div>
+                <div style={{fontSize:'0.7rem',color:'#94a3b8'}}>{profile?.full_name || 'Usuario'}</div>
+              </div>
+            )}
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',color:'white',cursor:'pointer'}}>
-            <X size={24} />
-          </button>
+          {isMobile && (
+            <button onClick={onClose} style={{background:'none',border:'none',color:'white',cursor:'pointer'}}>
+              <X size={24} />
+            </button>
+          )}
         </div>
 
         {/* Items */}
-        <div style={{flex:1,overflowY:'auto',padding:'1rem 0'}}>
+        <div style={{flex:1,overflowY:'auto',padding:'0.75rem 0'}}>
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
@@ -96,16 +100,17 @@ function MobileMenu({ isOpen, onClose }) {
               <Link
                 key={item.path}
                 to={item.path}
-                onClick={onClose}
+                onClick={isMobile ? onClose : undefined}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '1rem',
-                  padding: '1rem 1.5rem',
+                  padding: '0.875rem 1.25rem',
                   color: isActive ? 'white' : '#94a3b8',
                   textDecoration: 'none',
                   background: isActive ? '#dc2626' : 'transparent',
-                  fontWeight: 500
+                  fontWeight: 500,
+                  borderLeft: isActive ? '4px solid white' : '4px solid transparent'
                 }}
               >
                 <Icon size={20} />
@@ -113,10 +118,10 @@ function MobileMenu({ isOpen, onClose }) {
               </Link>
             )
           })}
-          
+
           {adminItems.length > 0 && (
             <>
-              <div style={{padding:'0.75rem 1.5rem',fontSize:'0.75rem',textTransform:'uppercase',color:'#64748b',fontWeight:600}}>Administración</div>
+              <div style={{padding:'1rem 1.25rem',fontSize:'0.7rem',textTransform:'uppercase',color:'#64748b',fontWeight:700,letterSpacing:'0.05em'}}>Administración</div>
               {adminItems.map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.path
@@ -124,16 +129,17 @@ function MobileMenu({ isOpen, onClose }) {
                   <Link
                     key={item.path}
                     to={item.path}
-                    onClick={onClose}
+                    onClick={isMobile ? onClose : undefined}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '1rem',
-                      padding: '1rem 1.5rem',
+                      padding: '0.875rem 1.25rem',
                       color: isActive ? 'white' : '#94a3b8',
                       textDecoration: 'none',
                       background: isActive ? '#dc2626' : 'transparent',
-                      fontWeight: 500
+                      fontWeight: 500,
+                      borderLeft: isActive ? '4px solid white' : '4px solid transparent'
                     }}
                   >
                     <Icon size={20} />
@@ -148,7 +154,7 @@ function MobileMenu({ isOpen, onClose }) {
         {/* Footer */}
         <div style={{padding:'1rem',borderTop:'1px solid rgba(255,255,255,0.1)'}}>
           <button
-            onClick={() => { signOut(); onClose() }}
+            onClick={() => { signOut(); if(isMobile) onClose() }}
             style={{
               width: '100%',
               display: 'flex',
@@ -161,11 +167,12 @@ function MobileMenu({ isOpen, onClose }) {
               borderRadius: '0.5rem',
               color: 'white',
               cursor: 'pointer',
-              fontWeight: 600
+              fontWeight: 600,
+              transition: 'all 0.2s'
             }}
           >
             <LogOut size={18} />
-            <span>Cerrar Sesión</span>
+            {!isMobile && <span>Cerrar Sesión</span>}
           </button>
         </div>
       </div>
@@ -176,52 +183,72 @@ function MobileMenu({ isOpen, onClose }) {
 function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { profile } = useAuth()
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+
+  // Detectar cambio de tamaño de pantalla
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+      if (window.innerWidth > 768) {
+        setMobileMenuOpen(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   return (
-    <>
-      {/* Mobile Header */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        background: '#1e293b',
-        color: 'white',
-        padding: '1rem',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-      }}>
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'white',
-            cursor: 'pointer',
-            padding: '0.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <Menu size={24} />
-        </button>
-        <img src="/logo.svg" alt="Logo" style={{height:40,width:40}} />
-        <div style={{flex:1}}>
-          <div style={{fontWeight:700,fontSize:'1rem'}}>POS Restaurante</div>
-          {profile && <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile.full_name}</div>}
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
+      {/* Desktop Sidebar - oculta en móvil */}
+      {!isMobile && <SidebarMenu isMobile={false} />}
+
+      {/* Mobile Header - solo en móvil */}
+      {isMobile && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: '#1e293b',
+          color: 'white',
+          padding: '1rem',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+        }}>
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              padding: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Menu size={24} />
+          </button>
+          <img src="/logo.svg" alt="Logo" style={{height:40,width:40}} />
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:'1rem'}}>POS Restaurante</div>
+            {profile && <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile.full_name}</div>}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mobile Menu */}
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      {isMobile && <SidebarMenu isMobile={true} isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />}
 
       {/* Main Content */}
       <div style={{
-        paddingTop: '70px',
+        flex: 1,
+        marginLeft: !isMobile ? '260px' : '0',
+        paddingTop: isMobile ? '70px' : '0',
         minHeight: '100vh',
         background: '#f1f5f9'
       }}>
@@ -238,7 +265,7 @@ function AppLayout() {
           <Route path="/sistema" element={<Sistema />} />
         </Routes>
       </div>
-    </>
+    </div>
   )
 }
 
