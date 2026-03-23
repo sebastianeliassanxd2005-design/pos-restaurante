@@ -8,6 +8,7 @@ import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { usePreventScreenshot } from './hooks/usePreventScreenshot'
 import { useServiceWorker } from './hooks/useServiceWorker'
+import InstallPrompt from './components/InstallPrompt'
 import Dashboard from './pages/Dashboard'
 import Tables from './pages/Tables'
 import POS from './pages/POS'
@@ -470,6 +471,9 @@ function AppContent() {
           </button>
         </div>
       )}
+      
+      {/* Prompt de instalación PWA */}
+      <InstallPrompt />
       
       <BrowserRouter>
         <Routes>
