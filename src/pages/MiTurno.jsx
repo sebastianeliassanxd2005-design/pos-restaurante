@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { 
-  Clock, Bell, CheckCircle, AlertCircle, TrendingUp, 
-  Utensils, ShoppingBag, DollarSign, Calendar, ChefHat,
-  Users, Phone, MessageCircle, X
+import {
+  Clock, Bell, CheckCircle, AlertCircle, TrendingUp,
+  Utensils, ShoppingBag, DollarSign, Calendar
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -349,7 +348,7 @@ function MiTurno() {
         {/* Pedidos Activos */}
         <div className="card">
           <h3 style={{fontSize:'1.0625rem',marginBottom:'1rem',display:'flex',alignItems:'center',gap:'0.5rem'}}>
-            <ChefHat size={20} style={{color:'var(--primary)'}} />
+            <ShoppingBag size={20} style={{color:'var(--primary)'}} />
             Pedidos Activos
           </h3>
           {misPedidos.length > 0 ? (

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { 
-  ShoppingBag, Clock, ChefHat, CheckCircle, Utensils, 
-  Search, Filter, Plus, Trash2, Edit, AlertCircle
+import {
+  ShoppingBag, Clock, CheckCircle, Utensils,
+  Search, Plus, AlertCircle
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -24,11 +24,11 @@ const ESTADOS_CONFIG = {
     bg: '#fef3c7',
     icon: Clock 
   },
-  [PEDIDOS_ESTADOS.COOKING]: { 
-    label: 'En Cocina', 
-    color: '#3b82f6', 
+  [PEDIDOS_ESTADOS.COOKING]: {
+    label: 'En Cocina',
+    color: '#3b82f6',
     bg: '#dbeafe',
-    icon: ChefHat 
+    icon: CheckCircle
   },
   [PEDIDOS_ESTADOS.READY]: { 
     label: 'Listo', 
@@ -254,7 +254,7 @@ function Pedidos() {
           alignItems:'center',
           gap:'0.5rem'
         }}>
-          <ChefHat size={18} style={{color:'#3b82f6'}} />
+          <Clock size={18} style={{color:'#3b82f6'}} />
           <span style={{fontWeight:600,color:'#3b82f6'}}>{stats.cocina}</span>
           <span style={{fontSize:'0.75rem',color:'#1e40af'}}>Cocina</span>
         </div>

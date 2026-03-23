@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import {
   LayoutDashboard, Utensils, ShoppingBag, Receipt, DollarSign, LogOut,
-  Menu, X, Bell, Clock, CheckCircle, TrendingUp, Users, Calendar, ChefHat
+  Menu, X, Bell, Clock, CheckCircle, TrendingUp, Users, Calendar
 } from 'lucide-react'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -18,7 +18,6 @@ import Reportes from './pages/Reportes'
 import Sistema from './pages/Sistema'
 import MiTurno from './pages/MiTurno'
 import Pedidos from './pages/Pedidos'
-import Cocina from './pages/Cocina'
 import './index.css'
 
 const SIDEBAR_WIDTH = 260
@@ -57,9 +56,6 @@ const ROLE_MENUS = {
     { path: '/pedidos', icon: ShoppingBag, label: 'Pedidos' },
     { path: '/reservas', icon: Calendar, label: 'Reservas' },
     { path: '/caja', icon: DollarSign, label: 'Cobrar' },
-  ],
-  kitchen: [
-    { path: '/cocina', icon: ChefHat, label: 'Órdenes Cocina' },
   ]
 }
 
@@ -102,8 +98,7 @@ function SidebarMenu({ isMobile, isOpen, onClose }) {
   const getRoleTitle = (role) => {
     const titles = {
       admin: 'Administrador',
-      waiter: 'Mesero',
-      kitchen: 'Cocina'
+      waiter: 'Mesero'
     }
     return titles[role] || 'Usuario'
   }
@@ -169,8 +164,7 @@ function SidebarMenu({ isMobile, isOpen, onClose }) {
                 width: 34,
                 height: 34,
                 borderRadius: '50%',
-                background: role === 'admin' ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' : 
-                           role === 'kitchen' ? 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)' :
+                background: role === 'admin' ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' :
                            'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                 display:'flex',
                 alignItems:'center',
@@ -391,11 +385,9 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={
               profile?.role === 'waiter' ? <Navigate to="/mi-turno" replace /> : 
-              profile?.role === 'kitchen' ? <Navigate to="/cocina" replace /> : 
               <Dashboard />
             } />
             <Route path="/mi-turno" element={<MiTurno />} />
-            <Route path="/cocina" element={<Cocina />} />
             <Route path="/mesas" element={<Tables />} />
             <Route path="/reservas" element={<Reservas />} />
             <Route path="/pos" element={<POS />} />
