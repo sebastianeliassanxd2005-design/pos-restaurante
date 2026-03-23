@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { LayoutDashboard, Utensils, ShoppingBag, Receipt, ClipboardList, Coffee, DollarSign, LogOut, User, Users, Calendar, BarChart3, Database, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Utensils, ShoppingBag, Receipt, ClipboardList, DollarSign, LogOut, User, Users, Calendar, BarChart3, Database, Menu, X } from 'lucide-react'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Dashboard from './pages/Dashboard'
@@ -173,76 +173,83 @@ function MobileMenu({ isOpen, onClose }) {
   )
 }
 
-function AppContent() {
+function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { profile } = useAuth()
-  const location = useLocation()
 
+  return (
+    <>
+      {/* Mobile Header */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        background: '#1e293b',
+        color: 'white',
+        padding: '1rem',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+      }}>
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer',
+            padding: '0.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <Menu size={24} />
+        </button>
+        <img src="/logo.svg" alt="Logo" style={{height:40,width:40}} />
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:'1rem'}}>POS Restaurante</div>
+          {profile && <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile.full_name}</div>}
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+
+      {/* Main Content */}
+      <div style={{
+        paddingTop: '70px',
+        minHeight: '100vh',
+        background: '#f1f5f9'
+      }}>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/mesas" element={<Tables />} />
+          <Route path="/reservas" element={<Reservas />} />
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/pos" element={<POS />} />
+          <Route path="/ordenes" element={<Orders />} />
+          <Route path="/caja" element={<Caja />} />
+          <Route path="/usuarios" element={<Usuarios />} />
+          <Route path="/reportes" element={<Reportes />} />
+          <Route path="/sistema" element={<Sistema />} />
+        </Routes>
+      </div>
+    </>
+  )
+}
+
+function AppContent() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/*" element={
           <ProtectedRoute>
-            {/* Mobile Header */}
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              background: '#1e293b',
-              color: 'white',
-              padding: '1rem',
-              zIndex: 100,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-            }}>
-              <button
-                onClick={() => setMobileMenuOpen(true)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'white',
-                  cursor: 'pointer',
-                  padding: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Menu size={24} />
-              </button>
-              <img src="/logo.svg" alt="Logo" style={{height:40,width:40}} />
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:'1rem'}}>POS Restaurante</div>
-                {profile && <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile.full_name}</div>}
-              </div>
-            </div>
-
-            {/* Mobile Menu */}
-            <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-
-            {/* Main Content */}
-            <div style={{
-              paddingTop: '70px',
-              minHeight: '100vh',
-              background: '#f1f5f9'
-            }}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/mesas" element={<Tables />} />
-                <Route path="/reservas" element={<Reservas />} />
-                <Route path="/menu" element={<MenuPage />} />
-                <Route path="/pos" element={<POS />} />
-                <Route path="/ordenes" element={<Orders />} />
-                <Route path="/caja" element={<Caja />} />
-                <Route path="/usuarios" element={<Usuarios />} />
-                <Route path="/reportes" element={<Reportes />} />
-                <Route path="/sistema" element={<Sistema />} />
-              </Routes>
-            </div>
+            <AppLayout />
           </ProtectedRoute>
         } />
       </Routes>
