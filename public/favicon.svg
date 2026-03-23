@@ -1,50 +1,22 @@
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <!-- Fondo degradado azul oscuro -->
-    <linearGradient id="faviconBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
-    </linearGradient>
-    
-    <!-- Sombra suave -->
-    <filter id="faviconShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
-      <feOffset dx="0" dy="2" result="offsetblur" />
-      <feComponentTransfer>
-        <feFuncA type="linear" slope="0.3" />
-      </feComponentTransfer>
-      <feMerge>
-        <feMergeNode />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-  </defs>
+  <!-- Fondo azul oscuro -->
+  <rect width="64" height="64" rx="12" fill="#1e2a45"/>
   
-  <!-- Fondo redondeado -->
-  <rect width="64" height="64" fill="url(#faviconBg)" rx="16"/>
+  <!-- Plato simplificado -->
+  <circle cx="32" cy="26" r="18" fill="#f5f5f5"/>
+  <circle cx="32" cy="26" r="18" fill="none" stroke="#c0392b" stroke-width="1.5"/>
+  <circle cx="32" cy="26" r="16" fill="none" stroke="#ffffff" stroke-width="1"/>
   
-  <!-- Círculo blanco central -->
-  <circle cx="32" cy="28" r="14" fill="#ffffff" filter="url(#faviconShadow)"/>
+  <!-- Tenedor simplificado -->
+  <rect x="27" y="30" width="3" height="12" rx="1" fill="#c0392b"/>
+  <rect x="27.5" y="22" width="1" height="9" rx="0.5" fill="#c0392b"/>
+  <rect x="29" y="22" width="1" height="9" rx="0.5" fill="#c0392b"/>
+  <rect x="30.5" y="22" width="1" height="9" rx="0.5" fill="#c0392b"/>
   
-  <!-- Icono de tenedor (rojo) -->
-  <g transform="translate(27, 22)">
-    <rect x="4" y="8" width="2" height="8" rx="1" fill="#dc2626"/>
-    <rect x="3.5" y="4" width="1" height="5" rx="0.5" fill="#dc2626"/>
-    <rect x="4.5" y="4" width="1" height="5" rx="0.5" fill="#dc2626"/>
-    <rect x="5.5" y="4" width="1" height="5" rx="0.5" fill="#dc2626"/>
-  </g>
+  <!-- Cuchillo simplificado -->
+  <rect x="34" y="30" width="2.5" height="12" rx="1" fill="#c0392b"/>
+  <rect x="34" y="22" width="2.5" height="9" rx="1" fill="#c0392b"/>
   
-  <!-- Icono de cuchillo (rojo) -->
-  <g transform="translate(33, 22)">
-    <rect x="2" y="8" width="2" height="8" rx="1" fill="#dc2626"/>
-    <rect x="1.5" y="4" width="3" height="6" rx="1" fill="#ef4444"/>
-  </g>
-  
-  <!-- Texto POS -->
-  <text x="32" y="52" 
-        font-family="Arial Black, sans-serif" 
-        font-size="10" 
-        font-weight="900" 
-        fill="#ffffff" 
-        text-anchor="middle">POS</text>
+  <!-- POS -->
+  <text x="32" y="56" text-anchor="middle" font-family="Arial Black, Arial" font-size="9" font-weight="900" fill="#ffffff" letter-spacing="1">POS</text>
 </svg>
