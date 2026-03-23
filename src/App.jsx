@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { LayoutDashboard, Utensils, ShoppingBag, Receipt, ClipboardList, Coffee, DollarSign, LogOut, User, Users, Calendar, Settings, Database, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Utensils, ShoppingBag, Receipt, ClipboardList, Coffee, DollarSign, LogOut, User, Users, Calendar, Settings, Database, BarChart3, Menu, X } from 'lucide-react'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Dashboard from './pages/Dashboard'
@@ -37,6 +38,7 @@ function ProtectedRoute({ children }) {
 function Navigation() {
   const location = useLocation()
   const { user, profile, signOut } = useAuth()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -47,6 +49,16 @@ function Navigation() {
     { path: '/ordenes', icon: Receipt, label: 'Órdenes' },
     { path: '/caja', icon: DollarSign, label: 'Caja' },
   ]
+
+  const adminItems = [
+    { path: '/usuarios', icon: Users, label: 'Usuarios' },
+    { path: '/reportes', icon: BarChart3, label: 'Reportes' },
+    { path: '/sistema', icon: Database, label: 'Sistema' },
+  ]
+
+  const handleNavClick = () => {
+    setMobileMenuOpen(false)
+  }
 
   return (
     <>
@@ -123,41 +135,111 @@ function Navigation() {
         </div>
       </nav>
 
-      {/* Mobile Navigation Bar */}
-      <nav className="mobile-nav show-mobile">
-        <ul>
-          <li>
-            <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
-              <LayoutDashboard size={20} />
-              <span>Inicio</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="/pos" className={location.pathname === '/pos' ? 'active' : ''}>
-              <ShoppingBag size={20} />
-              <span>Pedido</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="/mesas" className={location.pathname === '/mesas' ? 'active' : ''}>
-              <Utensils size={20} />
-              <span>Mesas</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="/ordenes" className={location.pathname === '/ordenes' ? 'active' : ''}>
-              <Receipt size={20} />
-              <span>Órdenes</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="/caja" className={location.pathname === '/caja' ? 'active' : ''}>
-              <DollarSign size={20} />
-              <span>Caja</span>
-            </Link>
-          </li>
-        </ul>
+      {/* Mobile Header with Hamburger Menu */}
+      <header className="mobile-header show-mobile">
+        <div className="mobile-header-content">
+          <button 
+            className="hamburger-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Menú"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+          <div className="mobile-logo">
+            <Coffee size={24} style={{ color: 'var(--primary)' }} />
+            <span>POS Restaurante</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="mobile-menu-overlay" onClick={handleNavClick} />
+      )}
+
+      {/* Mobile Slide Menu */}
+      <nav className={`mobile-slide-menu ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="mobile-menu-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+              <User size={20} />
+            </div>
+            <div>
+              <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                {profile?.full_name || 'Usuario'}
+              </p>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'capitalize' }}>
+                {profile?.role || 'waiter'}
+              </p>
+            </div>
+          </div>
+          <button 
+            className="btn-close-menu"
+            onClick={handleNavClick}
+            aria-label="Cerrar menú"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="mobile-menu-items">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = location.pathname === item.path
+            return (
+              <Link 
+                key={item.path} 
+                to={item.path} 
+                className={`mobile-menu-item ${isActive ? 'active' : ''}`}
+                onClick={handleNavClick}
+              >
+                <Icon size={20} />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
+          
+          {profile?.role === 'admin' && (
+            <>
+              <div className="mobile-menu-divider">Administración</div>
+              {adminItems.map((item) => {
+                const Icon = item.icon
+                const isActive = location.pathname === item.path
+                return (
+                  <Link 
+                    key={item.path} 
+                    to={item.path} 
+                    className={`mobile-menu-item ${isActive ? 'active' : ''}`}
+                    onClick={handleNavClick}
+                  >
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </>
+          )}
+        </div>
+
+        <div className="mobile-menu-footer">
+          <button 
+            className="btn btn-outline" 
+            style={{ width: '100%', justifyContent: 'center' }}
+            onClick={() => {
+              signOut()
+              handleNavClick()
+            }}
+          >
+            <LogOut size={18} />
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
       </nav>
+
+      {/* Main Content */}
+      <main className="main-content">
+        {children}
+      </main>
     </>
   )
 }
@@ -169,23 +251,7 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/*" element={
           <ProtectedRoute>
-            <div className="app-container">
-              <Navigation />
-              <main className="main-content">
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/mesas" element={<Tables />} />
-                  <Route path="/reservas" element={<Reservas />} />
-                  <Route path="/menu" element={<Menu />} />
-                  <Route path="/pos" element={<POS />} />
-                  <Route path="/ordenes" element={<Orders />} />
-                  <Route path="/caja" element={<Caja />} />
-                  <Route path="/usuarios" element={<Usuarios />} />
-                  <Route path="/reportes" element={<Reportes />} />
-                  <Route path="/sistema" element={<Sistema />} />
-                </Routes>
-              </main>
-            </div>
+            <Navigation />
           </ProtectedRoute>
         } />
       </Routes>
