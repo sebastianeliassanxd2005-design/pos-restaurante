@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { LayoutDashboard, Utensils, ShoppingBag, Receipt, ClipboardList, Coffee, DollarSign, LogOut, User, Users, Calendar, Settings, Database, BarChart3, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Utensils, ShoppingBag, Receipt, ClipboardList, Coffee, DollarSign, LogOut, User, Users, Calendar, BarChart3, Database, Menu, X } from 'lucide-react'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Dashboard from './pages/Dashboard'
 import Tables from './pages/Tables'
-import Menu from './pages/Menu'
+import MenuPage from './pages/Menu'
 import POS from './pages/POS'
 import Orders from './pages/Orders'
 import Caja from './pages/Caja'
@@ -15,17 +15,13 @@ import Reservas from './pages/Reservas'
 import Configuracion from './pages/Configuracion'
 import Reportes from './pages/Reportes'
 import Sistema from './pages/Sistema'
-import './App.css'
+import './index.css'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   
   if (loading) {
-    return (
-      <div className="loading-spinner">
-        <div className="spinner"></div>
-      </div>
-    )
+    return <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh'}}><div style={{width:40,height:40,border:'4px solid #e2e8f0',borderTopColor:'#dc2626',borderRadius:'50%',animation:'spin 1s linear infinite'}}></div></div>
   }
   
   if (!user) {
@@ -35,163 +31,82 @@ function ProtectedRoute({ children }) {
   return children
 }
 
-function Navigation() {
+function MobileMenu({ isOpen, onClose }) {
   const location = useLocation()
-  const { user, profile, signOut } = useAuth()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { profile, signOut } = useAuth()
   
-  const navItems = [
+  const menuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/mesas', icon: Utensils, label: 'Mesas' },
     { path: '/reservas', icon: Calendar, label: 'Reservas' },
-    { path: '/menu', icon: ClipboardList, label: 'Menú' },
-    { path: '/pos', icon: ShoppingBag, label: 'Pedido' },
+    { path: '/pos', icon: ShoppingBag, label: 'Nuevo Pedido' },
     { path: '/ordenes', icon: Receipt, label: 'Órdenes' },
     { path: '/caja', icon: DollarSign, label: 'Caja' },
   ]
 
-  const adminItems = [
+  const adminItems = profile?.role === 'admin' ? [
     { path: '/usuarios', icon: Users, label: 'Usuarios' },
     { path: '/reportes', icon: BarChart3, label: 'Reportes' },
     { path: '/sistema', icon: Database, label: 'Sistema' },
-  ]
-
-  const handleNavClick = () => {
-    setMobileMenuOpen(false)
-  }
+  ] : []
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <nav className="sidebar hide-mobile">
-        <div className="sidebar-header">
-          <Coffee size={32} style={{ color: 'var(--primary)' }} />
-          <div>
-            <h1>POS Restaurante</h1>
-            {profile && (
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                {profile.full_name || profile.email}
-              </p>
-            )}
-          </div>
-        </div>
-        <ul className="nav-links">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = location.pathname === item.path
-            return (
-              <li key={item.path}>
-                <Link to={item.path} className={isActive ? 'active' : ''}>
-                  <Icon size={20} />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            )
-          })}
-          {profile?.role === 'admin' && (
-            <>
-              <li>
-                <Link to="/usuarios" className={location.pathname === '/usuarios' ? 'active' : ''}>
-                  <Users size={20} />
-                  <span>Usuarios</span>
-                </Link>
-              </li>
-              <li>
-                <Link to="/reportes" className={location.pathname === '/reportes' ? 'active' : ''}>
-                  <BarChart3 size={20} />
-                  <span>Reportes</span>
-                </Link>
-              </li>
-              <li>
-                <Link to="/sistema" className={location.pathname === '/sistema' ? 'active' : ''}>
-                  <Database size={20} />
-                  <span>Sistema</span>
-                </Link>
-              </li>
-            </>
-          )}
-        </ul>
-        <div className="sidebar-footer">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-              <User size={18} />
-            </div>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <p style={{ fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {profile?.full_name || 'Usuario'}
-              </p>
-              <p style={{ fontSize: '0.625rem', color: '#94a3b8', textTransform: 'capitalize' }}>
-                {profile?.role || 'waiter'}
-              </p>
-            </div>
-          </div>
-          <button 
-            className="btn btn-outline" 
-            style={{ width: '100%', fontSize: '0.75rem' }}
-            onClick={() => signOut()}
-          >
-            <LogOut size={14} /> Cerrar Sesión
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile Header with Hamburger Menu */}
-      <header className="mobile-header show-mobile">
-        <div className="mobile-header-content">
-          <button 
-            className="hamburger-btn"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Menú"
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-          <div className="mobile-logo">
-            <Coffee size={24} style={{ color: 'var(--primary)' }} />
-            <span>POS Restaurante</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="mobile-menu-overlay" onClick={handleNavClick} />
-      )}
-
-      {/* Mobile Slide Menu */}
-      <nav className={`mobile-slide-menu ${mobileMenuOpen ? 'open' : ''}`}>
-        <div className="mobile-menu-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+      {/* Overlay */}
+      {isOpen && <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:999}} onClick={onClose} />}
+      
+      {/* Menú lateral */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '80%',
+        maxWidth: '300px',
+        height: '100vh',
+        background: '#1e293b',
+        color: 'white',
+        zIndex: 1000,
+        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s ease',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Header */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'1rem',borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+            <div style={{width:40,height:40,borderRadius:'50%',background:'#dc2626',display:'flex',alignItems:'center',justifyContent:'center'}}>
               <User size={20} />
             </div>
             <div>
-              <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                {profile?.full_name || 'Usuario'}
-              </p>
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'capitalize' }}>
-                {profile?.role || 'waiter'}
-              </p>
+              <div style={{fontWeight:600,fontSize:'0.875rem'}}>{profile?.full_name || 'Usuario'}</div>
+              <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile?.role || 'waiter'}</div>
             </div>
           </div>
-          <button 
-            className="btn-close-menu"
-            onClick={handleNavClick}
-            aria-label="Cerrar menú"
-          >
+          <button onClick={onClose} style={{background:'none',border:'none',color:'white',cursor:'pointer'}}>
             <X size={24} />
           </button>
         </div>
 
-        <div className="mobile-menu-items">
-          {navItems.map((item) => {
+        {/* Items */}
+        <div style={{flex:1,overflowY:'auto',padding:'1rem 0'}}>
+          {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
             return (
-              <Link 
-                key={item.path} 
-                to={item.path} 
-                className={`mobile-menu-item ${isActive ? 'active' : ''}`}
-                onClick={handleNavClick}
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={onClose}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  padding: '1rem 1.5rem',
+                  color: isActive ? 'white' : '#94a3b8',
+                  textDecoration: 'none',
+                  background: isActive ? '#dc2626' : 'transparent',
+                  fontWeight: 500
+                }}
               >
                 <Icon size={20} />
                 <span>{item.label}</span>
@@ -199,18 +114,27 @@ function Navigation() {
             )
           })}
           
-          {profile?.role === 'admin' && (
+          {adminItems.length > 0 && (
             <>
-              <div className="mobile-menu-divider">Administración</div>
+              <div style={{padding:'0.75rem 1.5rem',fontSize:'0.75rem',textTransform:'uppercase',color:'#64748b',fontWeight:600}}>Administración</div>
               {adminItems.map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.path
                 return (
-                  <Link 
-                    key={item.path} 
-                    to={item.path} 
-                    className={`mobile-menu-item ${isActive ? 'active' : ''}`}
-                    onClick={handleNavClick}
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      padding: '1rem 1.5rem',
+                      color: isActive ? 'white' : '#94a3b8',
+                      textDecoration: 'none',
+                      background: isActive ? '#dc2626' : 'transparent',
+                      fontWeight: 500
+                    }}
                   >
                     <Icon size={20} />
                     <span>{item.label}</span>
@@ -221,37 +145,104 @@ function Navigation() {
           )}
         </div>
 
-        <div className="mobile-menu-footer">
-          <button 
-            className="btn btn-outline" 
-            style={{ width: '100%', justifyContent: 'center' }}
-            onClick={() => {
-              signOut()
-              handleNavClick()
+        {/* Footer */}
+        <div style={{padding:'1rem',borderTop:'1px solid rgba(255,255,255,0.1)'}}>
+          <button
+            onClick={() => { signOut(); onClose() }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem',
+              background: 'transparent',
+              border: '2px solid rgba(255,255,255,0.3)',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              fontWeight: 600
             }}
           >
             <LogOut size={18} />
             <span>Cerrar Sesión</span>
           </button>
         </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="main-content">
-        {children}
-      </main>
+      </div>
     </>
   )
 }
 
 function AppContent() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { profile } = useAuth()
+  const location = useLocation()
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/*" element={
           <ProtectedRoute>
-            <Navigation />
+            {/* Mobile Header */}
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              background: '#1e293b',
+              color: 'white',
+              padding: '1rem',
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+            }}>
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Menu size={24} />
+              </button>
+              <Coffee size={24} style={{ color: '#dc2626' }} />
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:'1rem'}}>POS Restaurante</div>
+                {profile && <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile.full_name}</div>}
+              </div>
+            </div>
+
+            {/* Mobile Menu */}
+            <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+
+            {/* Main Content */}
+            <div style={{
+              paddingTop: '70px',
+              minHeight: '100vh',
+              background: '#f1f5f9'
+            }}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/mesas" element={<Tables />} />
+                <Route path="/reservas" element={<Reservas />} />
+                <Route path="/menu" element={<MenuPage />} />
+                <Route path="/pos" element={<POS />} />
+                <Route path="/ordenes" element={<Orders />} />
+                <Route path="/caja" element={<Caja />} />
+                <Route path="/usuarios" element={<Usuarios />} />
+                <Route path="/reportes" element={<Reportes />} />
+                <Route path="/sistema" element={<Sistema />} />
+              </Routes>
+            </div>
           </ProtectedRoute>
         } />
       </Routes>
