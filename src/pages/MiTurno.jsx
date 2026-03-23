@@ -499,41 +499,116 @@ function MiTurno() {
 
       {/* Mesas Ocupadas - Full Width */}
       {misMesas.length > 0 && (
-        <div className="card" style={{marginTop:'1.5rem'}}>
-          <h3 style={{fontSize:'1.0625rem',marginBottom:'1rem',display:'flex',alignItems:'center',gap:'0.5rem'}}>
-            <Utensils size={20} style={{color:'#dc2626'}} />
-            Mesas Ocupadas
+        <div className="card" style={{marginTop:'1.5rem',padding:'1.25rem',background:'linear-gradient(180deg, #fef2f2 0%, #ffffff 100%)',border:'1px solid #fecaca'}}>
+          <h3 style={{fontSize:'1.0625rem',marginBottom:'1.25rem',display:'flex',alignItems:'center',gap:'0.625rem'}}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+            }}>
+              <Utensils size={20} style={{color:'white'}} />
+            </div>
+            <span style={{color:'#1e293b'}}>Mesas Ocupadas</span>
+            <span style={{
+              background:'#dc2626',
+              color:'white',
+              padding:'0.125rem 0.625rem',
+              borderRadius:'9999px',
+              fontSize:'0.75rem',
+              fontWeight:700
+            }}>{misMesas.length}</span>
           </h3>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))',gap:'0.75rem'}}>
-            {misMesas.map((mesa) => (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:'1rem'}}>
+            {misMesas.map((mesa, index) => (
               <div
                 key={mesa.id}
                 style={{
                   display:'flex',
                   flexDirection:'column',
-                  alignItems:'center',
-                  padding:'1rem',
-                  background:'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-                  borderRadius:'8px',
-                  border:'2px solid #dc2626'
+                  padding:'1.25rem',
+                  background:'white',
+                  borderRadius:'12px',
+                  border:'1px solid #fecaca',
+                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.08)',
+                  transition: 'all 0.2s',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)'
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(220, 38, 38, 0.15)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(220, 38, 38, 0.08)'
                 }}
               >
+                {/* Barra superior decorativa */}
                 <div style={{
-                  width:36,
-                  height:36,
-                  borderRadius:'50%',
-                  background:'#dc2626',
+                  position:'absolute',
+                  top:0,
+                  left:0,
+                  right:0,
+                  height:'4px',
+                  background:'linear-gradient(90deg, #dc2626 0%, #f87171 100%)'
+                }} />
+                
+                {/* Número de mesa */}
+                <div style={{
+                  width:48,
+                  height:48,
+                  borderRadius:'12px',
+                  background:'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
                   display:'flex',
                   alignItems:'center',
                   justifyContent:'center',
-                  color:'white',
-                  fontWeight:700,
-                  fontSize:'0.875rem',
-                  marginBottom:'0.5rem'
+                  marginBottom:'0.75rem',
+                  alignSelf:'center',
+                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.15)'
                 }}>
-                  {mesa.name.replace('Mesa ','')}
+                  <span style={{
+                    fontSize:'1.25rem',
+                    fontWeight:800,
+                    color:'#dc2626'
+                  }}>
+                    {mesa.name.replace('Mesa ','')}
+                  </span>
                 </div>
-                <span className="badge badge-danger" style={{fontSize:'0.65rem'}}>Ocupada</span>
+                
+                {/* Label */}
+                <div style={{textAlign:'center',marginBottom:'0.5rem'}}>
+                  <span style={{fontSize:'0.7rem',color:'#9ca3af',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600}}>
+                    {mesa.name}
+                  </span>
+                </div>
+                
+                {/* Badge de estado */}
+                <div style={{
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  gap:'0.375rem',
+                  padding:'0.375rem 0.75rem',
+                  background:'linear-gradient(90deg, #fef2f2 0%, #fee2e2 100%)',
+                  borderRadius:'9999px',
+                  alignSelf:'center'
+                }}>
+                  <div style={{
+                    width:6,
+                    height:6,
+                    borderRadius:'50%',
+                    background:'#dc2626',
+                    animation:'pulse 2s infinite'
+                  }} />
+                  <span style={{fontSize:'0.7rem',fontWeight:700,color:'#991b1b'}}>
+                    OCUPADA
+                  </span>
+                </div>
               </div>
             ))}
           </div>
