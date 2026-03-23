@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { 
-  LayoutDashboard, Utensils, ShoppingBag, Receipt, DollarSign, LogOut, 
-  Menu, X, Bell, Clock, CheckCircle, TrendingUp, Users, Calendar 
+import {
+  LayoutDashboard, Utensils, ShoppingBag, Receipt, DollarSign, LogOut,
+  Menu, X, Bell, Clock, CheckCircle, TrendingUp, Users, Calendar, ChefHat
 } from 'lucide-react'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
