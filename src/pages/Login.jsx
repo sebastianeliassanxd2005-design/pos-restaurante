@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { Coffee, Mail, Lock } from 'lucide-react'
+import { Mail, Lock } from 'lucide-react'
 
 function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  
+
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
@@ -33,9 +33,6 @@ function Login() {
 
       <div className="login-card">
         <div className="login-header">
-          <div className="logo">
-            <img src="/logo-large.svg" alt="POS Restaurante Logo" style={{width:120,height:120}} />
-          </div>
           <h1>POS Restaurante</h1>
           <p>Sistema de Punto de Venta</p>
         </div>
@@ -79,16 +76,6 @@ function Login() {
             )}
           </button>
         </form>
-
-        <div className="login-demo">
-          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-            👤 Credenciales de Acceso:
-          </p>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            <p><strong>Admin:</strong> admin@restaurante.com</p>
-            <p><strong>Contraseña:</strong> 123456</p>
-          </div>
-        </div>
       </div>
     </div>
   )
