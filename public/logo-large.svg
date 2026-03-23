@@ -1,0 +1,46 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo circular con gradiente -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <circle cx="256" cy="256" r="256" fill="url(#bgGradient)"/>
+  
+  <!-- Plato base -->
+  <ellipse cx="256" cy="280" rx="180" ry="50" fill="#f1f5f9" opacity="0.2"/>
+  <ellipse cx="256" cy="256" rx="150" ry="42" fill="#ffffff"/>
+  <ellipse cx="256" cy="250" rx="140" ry="40" fill="#f8fafc"/>
+  
+  <!-- Cubiertos -->
+  <g transform="translate(256, 256)">
+    <!-- Tenedor -->
+    <g transform="translate(-40, -25) rotate(-20)">
+      <rect x="-8" y="-60" width="16" height="85" rx="4" fill="#dc2626"/>
+      <rect x="-10" y="-75" width="6" height="20" rx="3" fill="#dc2626"/>
+      <rect x="-2" y="-75" width="6" height="20" rx="3" fill="#dc2626"/>
+      <rect x="6" y="-75" width="6" height="20" rx="3" fill="#dc2626"/>
+    </g>
+    
+    <!-- Cuchillo -->
+    <g transform="translate(40, -25) rotate(20)">
+      <rect x="-6" y="-60" width="12" height="85" rx="4" fill="#dc2626"/>
+      <path d="M-6 -60 L6 -60 L6 -40 L-6 -40 Z" fill="#b91c1c"/>
+    </g>
+  </g>
+  
+  <!-- Texto POS -->
+  <text x="256" y="390" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="#ffffff" text-anchor="middle" letter-spacing="4">POS</text>
+  
+  <!-- Subtítulo -->
+  <text x="256" y="420" font-family="Arial, sans-serif" font-size="20" fill="#94a3b8" text-anchor="middle" letter-spacing="2">RESTAURANTE</text>
+  
+  <!-- Borde decorativo -->
+  <circle cx="256" cy="256" r="240" stroke="#dc2626" stroke-width="3" fill="none" opacity="0.4"/>
+  <circle cx="256" cy="256" r="246" stroke="#dc2626" stroke-width="1" fill="none" opacity="0.2"/>
+</svg>

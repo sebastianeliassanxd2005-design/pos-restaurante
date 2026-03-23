@@ -1,0 +1,31 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo circular -->
+  <circle cx="100" cy="100" r="100" fill="#1e293b"/>
+  
+  <!-- Plato base -->
+  <ellipse cx="100" cy="110" rx="70" ry="20" fill="#f1f5f9" opacity="0.3"/>
+  <ellipse cx="100" cy="100" rx="60" ry="17" fill="#ffffff"/>
+  
+  <!-- Cubiertos (tenedor y cuchillo) -->
+  <g transform="translate(100, 100)">
+    <!-- Tenedor -->
+    <g transform="translate(-15, -10) rotate(-15)">
+      <rect x="-3" y="-25" width="6" height="35" rx="2" fill="#dc2626"/>
+      <rect x="-4" y="-30" width="2" height="10" rx="1" fill="#dc2626"/>
+      <rect x="-1" y="-30" width="2" height="10" rx="1" fill="#dc2626"/>
+      <rect x="2" y="-30" width="2" height="10" rx="1" fill="#dc2626"/>
+    </g>
+    
+    <!-- Cuchillo -->
+    <g transform="translate(15, -10) rotate(15)">
+      <rect x="-2" y="-25" width="4" height="35" rx="2" fill="#dc2626"/>
+      <path d="M-2 -25 L2 -25 L2 -15 L-2 -15 Z" fill="#dc2626"/>
+    </g>
+  </g>
+  
+  <!-- Texto POS -->
+  <text x="100" y="155" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">POS</text>
+  
+  <!-- Decoración -->
+  <circle cx="100" cy="100" r="90" stroke="#dc2626" stroke-width="2" fill="none" opacity="0.5"/>
+</svg>

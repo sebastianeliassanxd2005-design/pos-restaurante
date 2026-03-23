@@ -34,7 +34,7 @@ function Login() {
       <div className="login-card">
         <div className="login-header">
           <div className="logo">
-            <Coffee size={48} />
+            <img src="/logo-large.svg" alt="POS Restaurante Logo" style={{width:120,height:120}} />
           </div>
           <h1>POS Restaurante</h1>
           <p>Sistema de Punto de Venta</p>

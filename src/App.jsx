@@ -214,7 +214,7 @@ function AppContent() {
               >
                 <Menu size={24} />
               </button>
-              <Coffee size={24} style={{ color: '#dc2626' }} />
+              <img src="/logo.svg" alt="Logo" style={{height:40,width:40}} />
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,fontSize:'1rem'}}>POS Restaurante</div>
                 {profile && <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile.full_name}</div>}
