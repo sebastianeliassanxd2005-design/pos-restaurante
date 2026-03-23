@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Factura - POS Restaurante</title>
+  
+  <!-- Google Fonts: IBM Plex Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'IBM Plex Mono', monospace;
+      background-color: #e9e9e9;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .receipt-card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 300px;
+      border-radius: 3px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      padding: 24px 20px;
+    }
+    
+    /* Header */
+    .receipt-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .receipt-icon {
+      width: 44px;
+      height: 44px;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    
+    .receipt-icon svg {
+      width: 24px;
+      height: 24px;
+      color: #1e293b;
+    }
+    
+    .receipt-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+    
+    .receipt-subtitle {
+      font-size: 11px;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+    
+    /* Separators */
+    .separator-dashed {
+      border-top: 1px dashed #ddd;
+      margin: 16px 0;
+    }
+    
+    .separator-solid {
+      border-top: 2px solid #000;
+      margin: 16px 0;
+    }
+    
+    /* Data Rows */
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .data-label {
+      font-size: 11px;
+      color: #9ca3af;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .data-value {
+      font-size: 12px;
+      color: #1e293b;
+      font-weight: 500;
+    }
+    
+    /* Payment Method Badge */
+    .payment-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background-color: #f5f5f5;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    
+    /* Total Section */
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .total-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #1e293b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .total-amount {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    
+    /* Footer */
+    .receipt-footer {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px dashed #ddd;
+    }
+    
+    .thank-you {
+      font-size: 13px;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-card">
+    <!-- Header -->
+    <div class="receipt-header">
+      <div class="receipt-icon">
+        <i data-lucide="utensils"></i>
+      </div>
+      <div class="receipt-title">POS Restaurante</div>
+      <div class="receipt-subtitle">Recibo #1b0812e6 • 23/03/26 13:16</div>
+    </div>
+    
+    <!-- Divider -->
+    <div class="separator-dashed"></div>
+    
+    <!-- Order Info -->
+    <div class="data-row">
+      <span class="data-label">Mesa</span>
+      <span class="data-value">Barra 1</span>
+    </div>
+    
+    <div class="data-row">
+      <span class="data-label">Método</span>
+      <span class="payment-badge">🪙 Efectivo</span>
+    </div>
+    
+    <!-- Divider -->
+    <div class="separator-dashed"></div>
+    
+    <!-- Order Items (Example) -->
+    <div class="data-row">
+      <span class="data-value">1x Hamburguesa</span>
+      <span class="data-value">$8.50</span>
+    </div>
+    
+    <div class="data-row" style="margin-bottom: 0;">
+      <span class="data-value">1x Refresco</span>
+      <span class="data-value">$3.50</span>
+    </div>
+    
+    <div class="data-row" style="margin-top: 8px;">
+      <span class="data-value">1x Papas</span>
+      <span class="data-value">$2.28</span>
+    </div>
+    
+    <!-- Subtotal -->
+    <div class="separator-dashed"></div>
+    
+    <div class="data-row" style="margin-bottom: 4px;">
+      <span class="data-label">Subtotal</span>
+      <span class="data-value">$12.07</span>
+    </div>
+    
+    <div class="data-row" style="margin-bottom: 12px;">
+      <span class="data-label">IVA (18%)</span>
+      <span class="data-value">$2.21</span>
+    </div>
+    
+    <!-- Total -->
+    <div class="separator-solid"></div>
+    
+    <div class="total-row">
+      <span class="total-label">TOTAL</span>
+      <span class="total-amount">$14.28</span>
+    </div>
+    
+    <!-- Footer -->
+    <div class="receipt-footer">
+      <div class="thank-you">¡Gracias por su visita!</div>
+    </div>
+  </div>
+  
+  <!-- Render Lucide Icons -->
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
