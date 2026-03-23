@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import {
   LayoutDashboard, Utensils, ShoppingBag, Receipt, DollarSign, LogOut,
-  Menu, X, Bell, Clock, CheckCircle, TrendingUp, Users, Calendar
+  Menu, X, Bell, Clock, CheckCircle, TrendingUp, Users, Calendar, WifiOff
 } from 'lucide-react'
 import { ToastProvider } from './context/ToastContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { usePreventScreenshot } from './hooks/usePreventScreenshot'
+import { useServiceWorker } from './hooks/useServiceWorker'
 import Dashboard from './pages/Dashboard'
 import Tables from './pages/Tables'
 import POS from './pages/POS'
@@ -406,21 +408,87 @@ function AppLayout() {
 }
 
 function AppContent() {
+  const { isOnline, updateAvailable, updateServiceWorker } = useServiceWorker()
+  
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/*" element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        } />
-      </Routes>
-    </BrowserRouter>
+    <>
+      {/* Notificación de Offline */}
+      {!isOnline && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: '#f59e0b',
+          color: '#92400e',
+          padding: '0.75rem 1rem',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem',
+          fontSize: '0.875rem',
+          fontWeight: 600,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+        }}>
+          <WifiOff size={18} />
+          <span>Modo Offline - Algunas funciones limitadas</span>
+        </div>
+      )}
+      
+      {/* Notificación de actualización disponible */}
+      {updateAvailable && (
+        <div style={{
+          position: 'fixed',
+          bottom: '1rem',
+          right: '1rem',
+          background: '#1e293b',
+          color: 'white',
+          padding: '1rem 1.25rem',
+          borderRadius: '0.5rem',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          animation: 'slideUp 0.3s ease-out'
+        }}>
+          <div style={{flex: 1}}>
+            <div style={{fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.25rem'}}>
+              Actualización disponible
+            </div>
+            <div style={{fontSize: '0.75rem', color: '#94a3b8'}}>
+              Nueva versión lista para instalar
+            </div>
+          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={updateServiceWorker}
+            style={{fontSize: '0.75rem', padding: '0.5rem 1rem'}}
+          >
+            Actualizar
+          </button>
+        </div>
+      )}
+      
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/*" element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </>
   )
 }
 
 function App() {
+  // Prevenir capturas de pantalla en toda la app
+  usePreventScreenshot()
+  
   return (
     <ToastProvider>
       <AuthProvider>

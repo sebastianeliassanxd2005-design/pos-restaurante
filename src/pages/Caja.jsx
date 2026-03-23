@@ -419,21 +419,57 @@ function Caja() {
 
             {/* Método de pago */}
             <div className="form-group">
-              <label>Método de Pago</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <button className={paymentMethod === 'cash' && !splitPayment ? 'btn btn-success' : 'btn btn-outline'} onClick={() => { setPaymentMethod('cash'); setSplitPayment(false); }}>
-                  <DollarSign size={18} /><div style={{ fontSize: '0.75rem' }}>Efectivo</div>
+              <label style={{fontWeight: 600, marginBottom: '0.75rem', display: 'block'}}>Método de Pago</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <button 
+                  className={paymentMethod === 'cash' && !splitPayment ? 'btn btn-success' : 'btn btn-outline'} 
+                  onClick={() => { setPaymentMethod('cash'); setSplitPayment(false); }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '1rem 0.5rem',
+                    minHeight: '80px'
+                  }}
+                >
+                  <DollarSign size={24} />
+                  <span style={{fontSize: '0.8rem', fontWeight: 600}}>Efectivo</span>
                 </button>
-                <button className={paymentMethod === 'card' && !splitPayment ? 'btn btn-info' : 'btn btn-outline'} onClick={() => { setPaymentMethod('card'); setSplitPayment(false); }}>
-                  <CreditCard size={18} /><div style={{ fontSize: '0.75rem' }}>Tarjeta</div>
+                <button 
+                  className={paymentMethod === 'card' && !splitPayment ? 'btn btn-primary' : 'btn btn-outline'} 
+                  onClick={() => { setPaymentMethod('card'); setSplitPayment(false); }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '1rem 0.5rem',
+                    minHeight: '80px'
+                  }}
+                >
+                  <CreditCard size={24} />
+                  <span style={{fontSize: '0.8rem', fontWeight: 600}}>Tarjeta</span>
                 </button>
-                <button className={paymentMethod === 'transfer' && !splitPayment ? 'btn btn-warning' : 'btn btn-outline'} onClick={() => { setPaymentMethod('transfer'); setSplitPayment(false); }}>
-                  <Coins size={18} /><div style={{ fontSize: '0.75rem' }}>Transferencia</div>
+                <button 
+                  className={paymentMethod === 'transfer' && !splitPayment ? 'btn btn-warning' : 'btn btn-outline'} 
+                  onClick={() => { setPaymentMethod('transfer'); setSplitPayment(false); }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '1rem 0.5rem',
+                    minHeight: '80px'
+                  }}
+                >
+                  <Banknote size={24} />
+                  <span style={{fontSize: '0.8rem', fontWeight: 600}}>Transferencia</span>
                 </button>
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.875rem' }}>
                 <input type="checkbox" checked={splitPayment} onChange={(e) => setSplitPayment(e.target.checked)} />
-                Pago dividido
+                <span>Pago dividido (combinar métodos)</span>
               </label>
             </div>
 

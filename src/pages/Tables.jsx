@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Edit, Trash2, Users, Search, Calendar, Clock, ShoppingBag } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, Search, Calendar, Clock, ShoppingBag, UserCheck } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 
 function Tables() {
   const { profile } = useAuth()
   const [tables, setTables] = useState([])
+  const [waiters, setWaiters] = useState([])  // Lista de meseros disponibles
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [showReservationModal, setShowReservationModal] = useState(false)
+  const [showWaiterModal, setShowWaiterModal] = useState(false)  // Modal para asignar mesero
   const [editingTable, setEditingTable] = useState(null)
+  const [selectedTableForWaiter, setSelectedTableForWaiter] = useState(null)  // Mesa para asignar mesero
+  const [selectedWaiter, setSelectedWaiter] = useState('')  // Mesero seleccionado
   const [selectedTableForReservation, setSelectedTableForReservation] = useState(null)
   const [filterSection, setFilterSection] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -47,19 +51,61 @@ function Tables() {
 
   useEffect(() => {
     fetchTables()
+    if (profile?.role === 'admin') {
+      fetchWaiters()
+    }
   }, [])
+
+  async function fetchWaiters() {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('role', 'waiter')
+        .order('full_name')
+
+      if (error) throw error
+      setWaiters(data || [])
+    } catch (error) {
+      console.error('Error fetching waiters:', error)
+    }
+  }
 
   async function fetchTables() {
     try {
       setError(null)
       setLoading(true)
 
-      const { data, error } = await supabase
+      // Primero obtener las mesas
+      const { data: tablesData, error: tablesError } = await supabase
         .from('tables')
         .select('*')
         .order('name')
 
-      if (error) throw error
+      if (tablesError) throw tablesError
+
+      // Luego obtener los perfiles de los meseros asignados
+      const waiterIds = tablesData
+        .filter(t => t.waiter_id)
+        .map(t => t.waiter_id)
+      
+      let waitersMap = {}
+      if (waiterIds.length > 0) {
+        const { data: waitersData } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', waiterIds)
+        
+        if (waitersData) {
+          waitersMap = Object.fromEntries(waitersData.map(w => [w.id, w.full_name]))
+        }
+      }
+
+      // Combinar datos
+      const data = tablesData.map(table => ({
+        ...table,
+        waiter_name: waitersMap[table.waiter_id] || null
+      }))
 
       // Obtener TODAS las reservas confirmadas/sentadas (sin filtro de fecha)
       // Luego filtramos en el frontend para evitar problemas de zona horaria
@@ -178,6 +224,31 @@ function Tables() {
       }
     } catch (error) {
       toast.error('Error: ' + error.message)
+    }
+  }
+
+  async function assignWaiter(tableId, waiterId) {
+    try {
+      const { error } = await supabase
+        .from('tables')
+        .update({ waiter_id: waiterId })
+        .eq('id', tableId)
+      
+      if (error) throw error
+      
+      const waiter = waiters.find(w => w.id === waiterId)
+      const table = tables.find(t => t.id === tableId)
+      
+      if (waiterId) {
+        toast.success(`Mesa ${table?.name} asignada a ${waiter?.full_name}`)
+      } else {
+        toast.success('Mesero desasignado de la mesa')
+      }
+      
+      setShowWaiterModal(false)
+      fetchTables()
+    } catch (error) {
+      toast.error('Error al asignar mesero: ' + error.message)
     }
   }
 
@@ -444,6 +515,21 @@ function Tables() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                       <h4 style={{ fontSize: '1rem' }}>{table.name}</h4>
                       <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        {/* Botón para asignar mesero (solo admin) */}
+                        {profile?.role === 'admin' && (
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.25rem' }} 
+                            onClick={() => {
+                              setSelectedTableForWaiter(table)
+                              setSelectedWaiter(table.waiter_id || '')
+                              setShowWaiterModal(true)
+                            }}
+                            title="Asignar mesero"
+                          >
+                            <UserCheck size={14} />
+                          </button>
+                        )}
                         <button className="btn btn-outline" style={{ padding: '0.25rem' }} onClick={() => editTable(table)}>
                           <Edit size={14} />
                         </button>
@@ -452,6 +538,26 @@ function Tables() {
                         </button>
                       </div>
                     </div>
+                    
+                    {/* Mostrar mesero asignado */}
+                    {table.waiter_id && (
+                      <div style={{
+                        padding: '0.5rem',
+                        background: profile?.role === 'admin' ? '#dbeafe' : '#f1f5f9',
+                        borderRadius: '0.375rem',
+                        marginBottom: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.75rem'
+                      }}>
+                        <UserCheck size={14} style={{ color: '#3b82f6' }} />
+                        <span style={{ color: '#1e40af', fontWeight: 600 }}>
+                          {table.waiter_name || 'Mesero asignado'}
+                        </span>
+                      </div>
+                    )}
+                    
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                       <Users size={16} /> {table.capacity} personas
                     </div>
@@ -799,6 +905,77 @@ function Tables() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para asignar mesero */}
+      {showWaiterModal && selectedTableForWaiter && (
+        <div className="modal-overlay" onClick={() => setShowWaiterModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '400px'}}>
+            <h3 style={{marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+              <UserCheck size={20} style={{color: 'var(--primary)'}} />
+              Asignar Mesero
+            </h3>
+            <p style={{fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem'}}>
+              {selectedTableForWaiter.name} - {selectedTableForWaiter.status === 'occupied' ? '🔴 Ocupada' : selectedTableForWaiter.status === 'reserved' ? '🔵 Reservada' : '⚪ Disponible'}
+            </p>
+            
+            <div className="form-group">
+              <label style={{fontWeight: 600, marginBottom: '0.5rem', display: 'block'}}>
+                Seleccionar Mesero:
+              </label>
+              <select
+                className="form-control"
+                value={selectedWaiter}
+                onChange={(e) => setSelectedWaiter(e.target.value)}
+                style={{fontSize: '0.875rem'}}
+              >
+                <option value="">-- Sin mesero asignado --</option>
+                {waiters.map(waiter => (
+                  <option key={waiter.id} value={waiter.id}>
+                    {waiter.full_name || waiter.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {selectedWaiter && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '0.75rem',
+                background: '#dbeafe',
+                borderRadius: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem'
+              }}>
+                <UserCheck size={16} style={{color: '#3b82f6'}} />
+                <span style={{color: '#1e40af', fontWeight: 600}}>
+                  {waiters.find(w => w.id === selectedWaiter)?.full_name}
+                </span>
+              </div>
+            )}
+            
+            <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem'}}>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={() => setShowWaiterModal(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={() => assignWaiter(selectedTableForWaiter.id, selectedWaiter)}
+                style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}
+              >
+                <UserCheck size={16} />
+                {selectedWaiter ? 'Asignar Mesero' : 'Desasignar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

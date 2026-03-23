@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabase'
 import { Search, Plus, Minus, Trash2, StickyNote } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useSearchParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 function POS() {
+  const { profile } = useAuth()
   const [searchParams] = useSearchParams()
   const [tables, setTables] = useState([])
   const [products, setProducts] = useState([])
@@ -164,12 +166,13 @@ function POS() {
       toast.warning('Agrega productos al pedido')
       return
     }
-    
+
     try {
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert([{
           table_id: selectedTable,
+          waiter_id: profile.id,  // Asignar mesero actual a la orden
           status: 'pending',
           subtotal: cartSubtotal,
           tax: tax,
@@ -177,9 +180,9 @@ function POS() {
         }])
         .select()
         .single()
-      
+
       if (orderError) throw orderError
-      
+
       const orderItems = cart.map(item => ({
         order_id: orderData.id,
         product_id: item.id,
@@ -190,12 +193,12 @@ function POS() {
         notes: item.notes,
         status: 'pending'
       }))
-      
+
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
       if (itemsError) throw itemsError
-      
+
       await supabase.from('tables').update({ status: 'occupied' }).eq('id', selectedTable)
-      
+
       toast.success('¡Orden creada!')
       setCart([])
       setSelectedTable(null)

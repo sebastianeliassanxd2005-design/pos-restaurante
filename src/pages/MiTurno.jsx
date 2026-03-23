@@ -42,16 +42,17 @@ function MiTurno() {
       const hoyFin = new Date()
       hoyFin.setHours(23, 59, 59, 999)
 
-      // 1. Obtener mesas ocupadas (asignadas al mesero indirectamente por órdenes activas)
+      // 1. Obtener mesas ocupadas (para meseros, mostrar todas las ocupadas temporalmente)
+      // Una vez que el sistema tenga waiter_id, filtrar por profile.id
       const { data: mesasData } = await supabase
         .from('tables')
         .select('*')
-        .eq('status', 'occupied')
+        .eq('status', 'occupied')  // Mostrar todas las mesas ocupadas
         .order('name')
 
       setMisMesas(mesasData || [])
 
-      // 2. Obtener pedidos activos del día (pendientes, en cocina, listos)
+      // 2. Obtener pedidos activos del día (todos, hasta que se asigne waiter_id)
       const { data: pedidosData } = await supabase
         .from('orders')
         .select('*, tables (name)')
