@@ -42,6 +42,16 @@ html, body {
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Sidebar scrollbar hidden but functional */
+.sidebar-menu {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-menu::-webkit-scrollbar {
+  display: none;
+}
+
 /* Loading Spinner */
 @keyframes spin {
   to { transform: rotate(360deg); }
