@@ -18,6 +18,7 @@ import Reportes from './pages/Reportes'
 import Sistema from './pages/Sistema'
 import MiTurno from './pages/MiTurno'
 import Pedidos from './pages/Pedidos'
+import Cocina from './pages/Cocina'
 import './index.css'
 
 const SIDEBAR_WIDTH = 260
@@ -58,7 +59,7 @@ const ROLE_MENUS = {
     { path: '/caja', icon: DollarSign, label: 'Cobrar' },
   ],
   kitchen: [
-    { path: '/pedidos', icon: Receipt, label: 'Órdenes Cocina' },
+    { path: '/cocina', icon: ChefHat, label: 'Órdenes Cocina' },
   ]
 }
 
@@ -307,7 +308,7 @@ function AppLayout() {
   // Redirigir meseros a Mi Turno por defecto
   const getDefaultPath = () => {
     if (profile?.role === 'waiter') return '/mi-turno'
-    if (profile?.role === 'kitchen') return '/pedidos'
+    if (profile?.role === 'kitchen') return '/cocina'
     return '/'
   }
 
@@ -390,6 +391,7 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={profile?.role === 'waiter' ? <Navigate to="/mi-turno" replace /> : <Dashboard />} />
             <Route path="/mi-turno" element={<MiTurno />} />
+            <Route path="/cocina" element={<Cocina />} />
             <Route path="/mesas" element={<Tables />} />
             <Route path="/reservas" element={<Reservas />} />
             <Route path="/pos" element={<POS />} />

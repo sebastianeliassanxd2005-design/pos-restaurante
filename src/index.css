@@ -112,6 +112,11 @@ html, body {
   color: white;
 }
 
+.btn-info {
+  background: var(--info);
+  color: white;
+}
+
 .btn-outline {
   background: transparent;
   border: 2px solid var(--border);
