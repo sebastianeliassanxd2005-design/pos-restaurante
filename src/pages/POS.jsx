@@ -240,10 +240,15 @@ function POS() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '1.5rem' }}>
-        <div style={{ flex: 1 }}>
+      {/* Layout responsive: Columna en móvil, fila en desktop */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '1.5rem',
+        flexDirection: window.innerWidth <= 768 ? 'column' : 'row'
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="card" style={{ marginBottom: '1.5rem' }}>
-            <label style={{ fontWeight: 600, marginBottom: '0.75rem', display: 'block' }}>
+            <label style={{ fontWeight: 600, marginBottom: '0.75rem', display: 'block', fontSize: '0.925rem' }}>
               🪑 Paso 1: Seleccionar Mesa
             </label>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
@@ -266,6 +271,10 @@ function POS() {
                     key={table.id}
                     className={selectedTable === table.id ? 'btn btn-primary' : 'btn btn-outline'}
                     onClick={() => setSelectedTable(table.id)}
+                    style={{ 
+                      fontSize: window.innerWidth <= 768 ? '0.8125rem' : '0.875rem',
+                      padding: window.innerWidth <= 768 ? '0.5rem 0.875rem' : '0.625rem 1rem'
+                    }}
                   >
                     {table.name} {selectedTable === table.id && '✓'}
                   </button>
@@ -275,41 +284,84 @@ function POS() {
           </div>
 
           <div className="card" style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexDirection: window.innerWidth <= 768 ? 'column' : 'row' }}>
               <input
                 type="text"
                 className="form-control"
                 placeholder="Buscar producto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ flex: 1 }}
+                style={{ flex: 1, minHeight: '40px' }}
               />
-              <select className="form-control" style={{ width: 'auto' }} value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+              <select 
+                className="form-control" 
+                style={{ 
+                  width: window.innerWidth <= 768 ? '100%' : 'auto',
+                  minHeight: '40px'
+                }} 
+                value={selectedCategory} 
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
                 <option value="all">Todas las categorías</option>
                 {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </select>
             </div>
           </div>
 
-          <div className="grid grid-3">
+          <div className="grid" style={{ 
+            gridTemplateColumns: window.innerWidth <= 768 ? '1fr' : 'repeat(3, 1fr)',
+            gap: window.innerWidth <= 768 ? '1rem' : '1.5rem'
+          }}>
             {filteredProducts.map(product => (
-              <div key={product.id} className="card" onClick={() => addToCart(product)} style={{ cursor: 'pointer' }}>
-                <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>{product.name}</h4>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', minHeight: '30px' }}>
+              <div key={product.id} className="card" onClick={() => addToCart(product)} style={{ 
+                cursor: 'pointer',
+                padding: window.innerWidth <= 768 ? '1rem' : '1.25rem'
+              }}>
+                <h4 style={{ 
+                  fontSize: window.innerWidth <= 768 ? '0.925rem' : '1rem', 
+                  marginBottom: '0.5rem' 
+                }}>{product.name}</h4>
+                <p style={{ 
+                  fontSize: window.innerWidth <= 768 ? '0.75rem' : '0.875rem', 
+                  color: 'var(--text-secondary)', 
+                  marginBottom: '0.75rem', 
+                  minHeight: '30px' 
+                }}>
                   {product.description}
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--primary)' }}>${parseFloat(product.price).toFixed(2)}</span>
-                  <button className="btn btn-primary" style={{ padding: '0.375rem 0.75rem' }}><Plus size={16} /></button>
+                  <span style={{ 
+                    fontWeight: 700, 
+                    color: 'var(--primary)',
+                    fontSize: window.innerWidth <= 768 ? '1rem' : '1.125rem'
+                  }}>${parseFloat(product.price).toFixed(2)}</span>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ 
+                      padding: window.innerWidth <= 768 ? '0.5rem 0.75rem' : '0.375rem 0.75rem'
+                    }}
+                  >
+                    <Plus size={window.innerWidth <= 768 ? 18 : 16} />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ width: '350px' }}>
-          <div className="card" style={{ position: 'sticky', top: '1rem' }}>
-            <h3 style={{ marginBottom: '1rem' }}>🛒 Orden Actual</h3>
+        {/* Carrito - En móvil va debajo, en desktop a la derecha */}
+        <div style={{ 
+          width: window.innerWidth <= 768 ? '100%' : '350px',
+          flexShrink: 0
+        }}>
+          <div className="card" style={{ 
+            position: window.innerWidth <= 768 ? 'relative' : 'sticky', 
+            top: window.innerWidth <= 768 ? '0' : '1rem' 
+          }}>
+            <h3 style={{ 
+              marginBottom: '1rem',
+              fontSize: window.innerWidth <= 768 ? '1.0625rem' : '1.125rem'
+            }}>🛒 Orden Actual</h3>
             
             {cart.length === 0 ? (
               <div className="empty-state">
@@ -317,39 +369,139 @@ function POS() {
               </div>
             ) : (
               <>
-                <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}>
+                <div style={{ 
+                  maxHeight: window.innerWidth <= 768 ? '400px' : '300px', 
+                  overflowY: 'auto', 
+                  marginBottom: '1rem' 
+                }}>
                   {cart.map((item, index) => (
-                    <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>${parseFloat(item.price).toFixed(2)} c/u</div>
-                        {item.notes && <div style={{ fontSize: '0.7rem', color: 'var(--warning)', marginTop: '0.25rem' }}>📝 {item.notes}</div>}
+                    <div 
+                      key={index} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'flex-start', 
+                        gap: '0.5rem', 
+                        padding: '0.5rem 0', 
+                        borderBottom: '1px solid var(--border)' 
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ 
+                          fontWeight: 600, 
+                          fontSize: window.innerWidth <= 768 ? '0.8125rem' : '0.875rem',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>{item.name}</div>
+                        <div style={{ 
+                          fontSize: window.innerWidth <= 768 ? '0.6875rem' : '0.75rem', 
+                          color: 'var(--text-secondary)' 
+                        }}>${parseFloat(item.price).toFixed(2)} c/u</div>
+                        {item.notes && (
+                          <div style={{ 
+                            fontSize: window.innerWidth <= 768 ? '0.625rem' : '0.7rem', 
+                            color: 'var(--warning)', 
+                            marginTop: '0.25rem' 
+                          }}>📝 {item.notes}</div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <button className="btn btn-outline" style={{ padding: '0.25rem' }} onClick={() => updateQuantity(index, -1)}><Minus size={14} /></button>
-                        <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
-                        <button className="btn btn-outline" style={{ padding: '0.25rem' }} onClick={() => updateQuantity(index, 1)}><Plus size={14} /></button>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ 
+                            padding: window.innerWidth <= 768 ? '0.375rem' : '0.25rem',
+                            minWidth: window.innerWidth <= 768 ? '32px' : '28px',
+                            height: window.innerWidth <= 768 ? '32px' : '28px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }} 
+                          onClick={() => updateQuantity(index, -1)}
+                        >
+                          <Minus size={window.innerWidth <= 768 ? 16 : 14} />
+                        </button>
+                        <span style={{ 
+                          minWidth: '24px', 
+                          textAlign: 'center', 
+                          fontWeight: 600,
+                          fontSize: window.innerWidth <= 768 ? '0.8125rem' : '0.875rem'
+                        }}>{item.quantity}</span>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ 
+                            padding: window.innerWidth <= 768 ? '0.375rem' : '0.25rem',
+                            minWidth: window.innerWidth <= 768 ? '32px' : '28px',
+                            height: window.innerWidth <= 768 ? '32px' : '28px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }} 
+                          onClick={() => updateQuantity(index, 1)}
+                        >
+                          <Plus size={window.innerWidth <= 768 ? 16 : 14} />
+                        </button>
                       </div>
-                      <button className="btn btn-outline" style={{ padding: '0.25rem' }} onClick={() => addNoteToItem(index)}><StickyNote size={14} /></button>
-                      <button className="btn btn-danger" style={{ padding: '0.25rem' }} onClick={() => removeFromCart(index)}><Trash2 size={14} /></button>
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ 
+                          padding: window.innerWidth <= 768 ? '0.375rem' : '0.25rem',
+                          minWidth: window.innerWidth <= 768 ? '32px' : '28px',
+                          height: window.innerWidth <= 768 ? '32px' : '28px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        onClick={() => addNoteToItem(index)}
+                      >
+                        <StickyNote size={window.innerWidth <= 768 ? 16 : 14} />
+                      </button>
+                      <button 
+                        className="btn btn-danger" 
+                        style={{ 
+                          padding: window.innerWidth <= 768 ? '0.375rem' : '0.25rem',
+                          minWidth: window.innerWidth <= 768 ? '32px' : '28px',
+                          height: window.innerWidth <= 768 ? '32px' : '28px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        onClick={() => removeFromCart(index)}
+                      >
+                        <Trash2 size={window.innerWidth <= 768 ? 16 : 14} />
+                      </button>
                     </div>
                   ))}
                 </div>
 
                 <div style={{ borderTop: '2px solid var(--border)', paddingTop: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Subtotal:</span>
                     <span>${cartSubtotal.toFixed(2)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Impuesto (19%):</span>
                     <span>${tax.toFixed(2)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    fontSize: window.innerWidth <= 768 ? '1.125rem' : '1.25rem', 
+                    fontWeight: 700, 
+                    marginBottom: '1rem' 
+                  }}>
                     <span>Total:</span>
                     <span style={{ color: 'var(--primary)' }}>${cartTotal.toFixed(2)}</span>
                   </div>
-                  <button className="btn btn-success btn-lg" style={{ width: '100%' }} onClick={createOrder} disabled={!selectedTable}>
+                  <button 
+                    className="btn btn-success btn-lg" 
+                    style={{ 
+                      width: '100%',
+                      padding: window.innerWidth <= 768 ? '1rem' : '1.125rem',
+                      fontSize: window.innerWidth <= 768 ? '1rem' : '1.0625rem'
+                    }} 
+                    onClick={createOrder} 
+                    disabled={!selectedTable}
+                  >
                     📤 Enviar a Cocina
                   </button>
                 </div>
