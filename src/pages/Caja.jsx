@@ -23,9 +23,10 @@ function Caja() {
   useEffect(() => {
     fetchOrders()
     fetchDailyTotal()
-    
-    // Si viene de Órdenes con un order ID, abrir modal de pago
-    const orderId = searchParams.get('order')
+
+    // Si viene de Pedidos con un order ID, abrir modal de pago
+    const orderId = searchParams.get('orderId') || searchParams.get('order')
+    const tableId = searchParams.get('tableId')
     if (orderId) {
       fetchOrderToPay(orderId)
     }

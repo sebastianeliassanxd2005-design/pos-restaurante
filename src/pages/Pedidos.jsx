@@ -393,20 +393,32 @@ function Pedidos() {
                         >
                           ←
                         </button>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => cambiarEstado(pedido.id, getNextState(pedido.status))}
-                          style={{padding:'0.5rem 1rem',fontSize:'0.8rem'}}
-                        >
-                          {pedido.status === PEDIDOS_ESTADOS.PENDING && '→ Cocina'}
-                          {pedido.status === PEDIDOS_ESTADOS.COOKING && '→ Listo'}
-                          {pedido.status === PEDIDOS_ESTADOS.READY && '→ Servir'}
-                          {pedido.status === PEDIDOS_ESTADOS.SERVED && '→ Cobrar'}
-                        </button>
+                        {pedido.status === PEDIDOS_ESTADOS.SERVED ? (
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() => {
+                              // Redirigir a Caja para procesar el pago
+                              window.location.href = `/caja?orderId=${pedido.id}&tableId=${pedido.table_id}`
+                            }}
+                            style={{padding:'0.5rem 1rem',fontSize:'0.8rem'}}
+                          >
+                            💵 Cobrar
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => cambiarEstado(pedido.id, getNextState(pedido.status))}
+                            style={{padding:'0.5rem 1rem',fontSize:'0.8rem'}}
+                          >
+                            {pedido.status === PEDIDOS_ESTADOS.PENDING && '→ Cocina'}
+                            {pedido.status === PEDIDOS_ESTADOS.COOKING && '→ Listo'}
+                            {pedido.status === PEDIDOS_ESTADOS.READY && '→ Servir'}
+                          </button>
+                        )}
                       </>
                     )}
                     {pedido.status === PEDIDOS_ESTADOS.PAID && (
-                      <span className="badge badge-success" style={{fontSize:'0.7rem'}}>
+                      <span className="badge badge-success" style={{fontSize:'0.75rem'}}>
                         ✓ Completado
                       </span>
                     )}
