@@ -753,29 +753,76 @@ function Reportes() {
       {reportData.ventasPorDia.length > 0 && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <h3 style={{ marginBottom: '1rem' }}>📈 Ventas por Día</h3>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '200px', overflowX: 'auto' }}>
-            {reportData.ventasPorDia.map((dia, idx) => {
-              const maxValue = Math.max(...reportData.ventasPorDia.map(d => d.value))
-              const height = maxValue > 0 ? (dia.value / maxValue) * 160 : 0
-              return (
-                <div key={idx} style={{ flex: 1, minWidth: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ 
-                    width: '100%', 
-                    height: `${height}px`, 
-                    background: 'var(--primary)', 
-                    borderRadius: '4px 4px 0 0',
-                    minHeight: dia.value > 0 ? '4px' : '0'
-                  }}></div>
-                  <div style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', marginTop: '0.5rem', textAlign: 'center' }}>
-                    {dia.label}
+          
+          {/* Vista compacta para mes completo */}
+          {filterPeriod === 'month' ? (
+            /* Grid compacto de 30 días (6 filas x 5 columnas) */
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(5, 1fr)',
+              gap: '0.75rem'
+            }}>
+              {reportData.ventasPorDia.map((dia, idx) => (
+                <div 
+                  key={idx} 
+                  style={{
+                    padding: '0.75rem',
+                    background: filterPeriod === 'month' ? 'var(--background)' : 'transparent',
+                    borderRadius: '6px',
+                    textAlign: 'center',
+                    border: dia.value > 0 ? '1px solid var(--border)' : '1px dashed var(--border)'
+                  }}
+                >
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.375rem' }}>
+                    {dia.label.split(' ').slice(0, 2).join(' ')}
                   </div>
-                  <div style={{ fontSize: '0.625rem', fontWeight: 600, marginTop: '0.25rem' }}>
+                  <div style={{
+                    height: '60px',
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'center',
+                    marginBottom: '0.375rem'
+                  }}>
+                    <div style={{
+                      width: '24px',
+                      height: `${Math.max((dia.value / Math.max(...reportData.ventasPorDia.map(d => d.value))) * 50, 4)}px`,
+                      background: dia.value > 0 ? 'var(--primary)' : 'var(--border)',
+                      borderRadius: '4px 4px 0 0',
+                      transition: 'height 0.3s'
+                    }}></div>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: dia.value > 0 ? 'var(--primary)' : 'var(--text-secondary)' }}>
                     ${dia.value.toFixed(0)}
                   </div>
                 </div>
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            /* Vista normal con barras horizontales para hoy/semana */
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '200px', overflowX: 'auto' }}>
+              {reportData.ventasPorDia.map((dia, idx) => {
+                const maxValue = Math.max(...reportData.ventasPorDia.map(d => d.value))
+                const height = maxValue > 0 ? (dia.value / maxValue) * 160 : 0
+                return (
+                  <div key={idx} style={{ flex: 1, minWidth: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{
+                      width: '100%',
+                      height: `${height}px`,
+                      background: 'var(--primary)',
+                      borderRadius: '4px 4px 0 0',
+                      minHeight: dia.value > 0 ? '4px' : '0'
+                    }}></div>
+                    <div style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', marginTop: '0.5rem', textAlign: 'center' }}>
+                      {dia.label}
+                    </div>
+                    <div style={{ fontSize: '0.625rem', fontWeight: 600, marginTop: '0.25rem' }}>
+                      ${dia.value.toFixed(0)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
