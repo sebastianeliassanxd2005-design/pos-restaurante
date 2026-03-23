@@ -17,6 +17,8 @@ import Reportes from './pages/Reportes'
 import Sistema from './pages/Sistema'
 import './index.css'
 
+const SIDEBAR_WIDTH = 280
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
 
@@ -50,49 +52,129 @@ function SidebarMenu({ isMobile, isOpen, onClose }) {
     { path: '/sistema', icon: Database, label: 'Sistema' },
   ] : []
 
-  const menuStyle = {
-    position: isMobile ? 'fixed' : 'relative',
+  const menuStyle = isMobile ? {
+    position: 'fixed',
     top: 0,
     left: 0,
-    width: isMobile ? '80%' : '260px',
-    maxWidth: isMobile ? '300px' : '260px',
-    height: isMobile ? '100vh' : '100vh',
+    width: '85%',
+    maxWidth: '300px',
+    height: '100vh',
     background: '#1e293b',
     color: 'white',
-    zIndex: isMobile ? 1000 : 100,
-    transform: isMobile && !isOpen ? 'translateX(-100%)' : 'translateX(0)',
-    transition: isMobile ? 'transform 0.3s ease' : 'none',
+    zIndex: 1001,
+    transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+    transition: 'transform 0.3s ease',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: isMobile ? 'none' : '4px 0 10px rgba(0,0,0,0.1)'
+    boxShadow: '4px 0 15px rgba(0,0,0,0.3)'
+  } : {
+    width: SIDEBAR_WIDTH,
+    height: '100vh',
+    background: '#1e293b',
+    color: 'white',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
+    zIndex: 100
   }
 
   return (
     <>
-      {/* Overlay solo para móvil */}
-      {isMobile && isOpen && <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:999}} onClick={onClose} />}
+      {isMobile && isOpen && (
+        <div 
+          style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:1000}} 
+          onClick={onClose}
+        />
+      )}
 
       <div style={menuStyle}>
         {/* Header */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'1.25rem 1rem',borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
-          <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-            <img src="/logo.svg" alt="Logo" style={{width:40,height:40}} />
+        <div style={{
+          display:'flex',
+          justifyContent:'space-between',
+          alignItems:'center',
+          padding: isMobile ? '1rem' : '1.5rem 1.25rem',
+          borderBottom:'1px solid rgba(255,255,255,0.1)',
+          background: '#1a2332'
+        }}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.875rem'}}>
+            <div style={{
+              width: 42,
+              height: 42,
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              boxShadow: '0 4px 10px rgba(220, 38, 38, 0.3)'
+            }}>
+              <img src="/logo.svg" alt="Logo" style={{width:28,height:28}} />
+            </div>
             {!isMobile && (
               <div>
-                <div style={{fontWeight:700,fontSize:'0.875rem'}}>POS Restaurante</div>
-                <div style={{fontSize:'0.7rem',color:'#94a3b8'}}>{profile?.full_name || 'Usuario'}</div>
+                <div style={{fontWeight:700,fontSize:'0.9rem',color:'white'}}>POS</div>
+                <div style={{fontSize:'0.65rem',color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.5px'}}>Restaurante</div>
               </div>
             )}
           </div>
           {isMobile && (
-            <button onClick={onClose} style={{background:'none',border:'none',color:'white',cursor:'pointer'}}>
-              <X size={24} />
+            <button 
+              onClick={onClose} 
+              style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',padding:'0.5rem'}}
+              onMouseOver={(e) => e.target.style.color = 'white'}
+              onMouseOut={(e) => e.target.style.color = '#94a3b8'}
+            >
+              <X size={22} />
             </button>
           )}
         </div>
 
-        {/* Items */}
-        <div style={{flex:1,overflowY:'auto',padding:'0.75rem 0'}}>
+        {/* User Info - Solo Desktop */}
+        {!isMobile && profile && (
+          <div style={{
+            padding: '1rem 1.25rem',
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            background: 'rgba(255,255,255,0.02)'
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                display:'flex',
+                alignItems:'center',
+                justifyContent:'center',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                color: 'white'
+              }}>
+                {profile.full_name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,fontSize:'0.8rem',color:'white',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  {profile.full_name || 'Usuario'}
+                </div>
+                <div style={{fontSize:'0.65rem',color:'#64748b',textTransform:'capitalize'}}>
+                  {profile.role || 'waiter'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Menu Items */}
+        <div style={{flex:1,overflowY:'auto',padding:'0.75rem',display:'flex',flexDirection:'column',gap:'0.25rem'}}>
+          {/* Main Section */}
+          {!isMobile && (
+            <div style={{padding:'0.5rem 0.5rem',fontSize:'0.65rem',textTransform:'uppercase',color:'#64748b',fontWeight:700,letterSpacing:'0.1em'}}>
+              Menú Principal
+            </div>
+          )}
+          
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
@@ -104,24 +186,63 @@ function SidebarMenu({ isMobile, isOpen, onClose }) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '1rem',
-                  padding: '0.875rem 1.25rem',
+                  gap: '0.875rem',
+                  padding: '0.875rem 1rem',
                   color: isActive ? 'white' : '#94a3b8',
                   textDecoration: 'none',
-                  background: isActive ? '#dc2626' : 'transparent',
+                  background: isActive ? 'linear-gradient(90deg, rgba(220,38,38,0.2) 0%, transparent 100%)' : 'transparent',
+                  borderRadius: '8px',
                   fontWeight: 500,
-                  borderLeft: isActive ? '4px solid white' : '4px solid transparent'
+                  fontSize: '0.875rem',
+                  borderLeft: isActive ? '3px solid #dc2626' : '3px solid transparent',
+                  transition: 'all 0.2s',
+                  position: 'relative'
+                }}
+                onMouseOver={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                    e.currentTarget.style.color = 'white'
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#94a3b8'
+                  }
                 }}
               >
-                <Icon size={20} />
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 <span>{item.label}</span>
+                {isActive && (
+                  <div style={{
+                    position:'absolute',
+                    right: '1rem',
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#dc2626',
+                    boxShadow: '0 0 10px #dc2626'
+                  }} />
+                )}
               </Link>
             )
           })}
 
+          {/* Admin Section */}
           {adminItems.length > 0 && (
             <>
-              <div style={{padding:'1rem 1.25rem',fontSize:'0.7rem',textTransform:'uppercase',color:'#64748b',fontWeight:700,letterSpacing:'0.05em'}}>Administración</div>
+              <div style={{
+                padding: isMobile ? '1rem 0.5rem 0.5rem' : '1.25rem 0.5rem 0.5rem',
+                fontSize: '0.65rem',
+                textTransform: 'uppercase',
+                color: '#64748b',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                borderTop: '1px solid rgba(255,255,255,0.05)',
+                marginTop: '0.5rem'
+              }}>
+                {isMobile ? 'Administración' : 'Panel Admin'}
+              </div>
               {adminItems.map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.path
@@ -133,17 +254,44 @@ function SidebarMenu({ isMobile, isOpen, onClose }) {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '1rem',
-                      padding: '0.875rem 1.25rem',
+                      gap: '0.875rem',
+                      padding: '0.875rem 1rem',
                       color: isActive ? 'white' : '#94a3b8',
                       textDecoration: 'none',
-                      background: isActive ? '#dc2626' : 'transparent',
+                      background: isActive ? 'linear-gradient(90deg, rgba(220,38,38,0.2) 0%, transparent 100%)' : 'transparent',
+                      borderRadius: '8px',
                       fontWeight: 500,
-                      borderLeft: isActive ? '4px solid white' : '4px solid transparent'
+                      fontSize: '0.875rem',
+                      borderLeft: isActive ? '3px solid #dc2626' : '3px solid transparent',
+                      transition: 'all 0.2s',
+                      position: 'relative'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                        e.currentTarget.style.color = 'white'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.color = '#94a3b8'
+                      }
                     }}
                   >
-                    <Icon size={20} />
+                    <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                     <span>{item.label}</span>
+                    {isActive && (
+                      <div style={{
+                        position:'absolute',
+                        right: '1rem',
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: '#dc2626',
+                        boxShadow: '0 0 10px #dc2626'
+                      }} />
+                    )}
                   </Link>
                 )
               })}
@@ -151,28 +299,37 @@ function SidebarMenu({ isMobile, isOpen, onClose }) {
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{padding:'1rem',borderTop:'1px solid rgba(255,255,255,0.1)'}}>
+        {/* Footer - Logout */}
+        <div style={{padding:'1rem',borderTop:'1px solid rgba(255,255,255,0.1)',background:'rgba(0,0,0,0.2)'}}>
           <button
             onClick={() => { signOut(); if(isMobile) onClose() }}
             style={{
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem',
-              background: 'transparent',
-              border: '2px solid rgba(255,255,255,0.3)',
-              borderRadius: '0.5rem',
-              color: 'white',
+              justifyContent: isMobile ? 'center' : 'center',
+              gap: '0.75rem',
+              padding: '0.875rem',
+              background: 'rgba(220,38,38,0.1)',
+              border: '1px solid rgba(220,38,38,0.3)',
+              borderRadius: '8px',
+              color: '#fca5a5',
               cursor: 'pointer',
               fontWeight: 600,
+              fontSize: '0.875rem',
               transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(220,38,38,0.2)'
+              e.currentTarget.style.borderColor = 'rgba(220,38,38,0.5)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(220,38,38,0.1)'
+              e.currentTarget.style.borderColor = 'rgba(220,38,38,0.3)'
             }}
           >
             <LogOut size={18} />
-            {!isMobile && <span>Cerrar Sesión</span>}
+            <span>{isMobile ? 'Cerrar Sesión' : 'Salir del Sistema'}</span>
           </button>
         </div>
       </div>
@@ -185,86 +342,111 @@ function AppLayout() {
   const { profile } = useAuth()
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
 
-  // Detectar cambio de tamaño de pantalla
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768)
-      if (window.innerWidth > 768) {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (!mobile) {
         setMobileMenuOpen(false)
       }
     }
     window.addEventListener('resize', handleResize)
+    handleResize()
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
-      {/* Desktop Sidebar - oculta en móvil */}
+      {/* Desktop Sidebar */}
       {!isMobile && <SidebarMenu isMobile={false} />}
 
-      {/* Mobile Header - solo en móvil */}
+      {/* Mobile Header */}
       {isMobile && (
-        <div style={{
+        <header style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
-          background: '#1e293b',
+          height: '60px',
+          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
           color: 'white',
-          padding: '1rem',
-          zIndex: 100,
+          padding: '0 1rem',
+          zIndex: 999,
           display: 'flex',
           alignItems: 'center',
           gap: '1rem',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 15px rgba(0,0,0,0.15)'
         }}>
           <button
             onClick={() => setMobileMenuOpen(true)}
             style={{
-              background: 'none',
+              background: 'rgba(255,255,255,0.1)',
               border: 'none',
               color: 'white',
               cursor: 'pointer',
               padding: '0.5rem',
+              borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              transition: 'background 0.2s'
             }}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
           >
-            <Menu size={24} />
+            <Menu size={22} />
           </button>
-          <img src="/logo.svg" alt="Logo" style={{height:40,width:40}} />
-          <div style={{flex:1}}>
-            <div style={{fontWeight:700,fontSize:'1rem'}}>POS Restaurante</div>
-            {profile && <div style={{fontSize:'0.75rem',color:'#94a3b8'}}>{profile.full_name}</div>}
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'center',
+            boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)'
+          }}>
+            <img src="/logo.svg" alt="Logo" style={{width:24,height:24}} />
           </div>
-        </div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:'0.95rem'}}>POS Restaurante</div>
+            {profile && <div style={{fontSize:'0.7rem',color:'#94a3b8'}}>{profile.full_name}</div>}
+          </div>
+        </header>
       )}
 
       {/* Mobile Menu */}
-      {isMobile && <SidebarMenu isMobile={true} isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />}
+      {isMobile && (
+        <SidebarMenu 
+          isMobile={true} 
+          isOpen={mobileMenuOpen} 
+          onClose={() => setMobileMenuOpen(false)} 
+        />
+      )}
 
       {/* Main Content */}
-      <div style={{
+      <main style={{
         flex: 1,
-        marginLeft: !isMobile ? '260px' : '0',
+        marginLeft: !isMobile ? `${SIDEBAR_WIDTH}px` : '0',
         paddingTop: isMobile ? '70px' : '0',
         minHeight: '100vh',
         background: '#f1f5f9'
       }}>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/mesas" element={<Tables />} />
-          <Route path="/reservas" element={<Reservas />} />
-          <Route path="/menu" element={<MenuPage />} />
-          <Route path="/pos" element={<POS />} />
-          <Route path="/ordenes" element={<Orders />} />
-          <Route path="/caja" element={<Caja />} />
-          <Route path="/usuarios" element={<Usuarios />} />
-          <Route path="/reportes" element={<Reportes />} />
-          <Route path="/sistema" element={<Sistema />} />
-        </Routes>
-      </div>
+        <div style={{padding: !isMobile ? '1.5rem' : '1rem'}}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/mesas" element={<Tables />} />
+            <Route path="/reservas" element={<Reservas />} />
+            <Route path="/menu" element={<MenuPage />} />
+            <Route path="/pos" element={<POS />} />
+            <Route path="/ordenes" element={<Orders />} />
+            <Route path="/caja" element={<Caja />} />
+            <Route path="/usuarios" element={<Usuarios />} />
+            <Route path="/reportes" element={<Reportes />} />
+            <Route path="/sistema" element={<Sistema />} />
+          </Routes>
+        </div>
+      </main>
     </div>
   )
 }
