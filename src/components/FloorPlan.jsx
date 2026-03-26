@@ -331,7 +331,7 @@ function ZoneRect({ zone, isSelected, onClick, onUpdate, onDelete, onResize, onM
 }
 
 // Componente para mesas
-function TableNode({ table, isSelected, onMouseDown, onClick, isAdmin }) {
+function TableNode({ table, isSelected, onMouseDown, onClick, onTouchStart, onTouchMove, onTouchEnd, isAdmin }) {
   if (!table || !table.id) return null;
 
   const cfg = STATUS_CONFIG[table.status] || STATUS_CONFIG.available;
@@ -340,6 +340,9 @@ function TableNode({ table, isSelected, onMouseDown, onClick, isAdmin }) {
   return (
     <div
       onMouseDown={(e) => onMouseDown(e, table.id, isAdmin)}
+      onTouchStart={(e) => onTouchStart(e, table.id)}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
       onClick={(e) => { e.stopPropagation(); onClick(table.id); }}
       style={{
         position: "absolute",
@@ -362,6 +365,7 @@ function TableNode({ table, isSelected, onMouseDown, onClick, isAdmin }) {
         transition: "box-shadow 0.15s, border-color 0.15s",
         zIndex: isSelected ? 10 : 1,
         pointerEvents: isAdmin ? "auto" : "none",
+        touchAction: isAdmin ? "none" : "auto",
       }}
     >
       <span style={{ fontWeight: 700, fontSize: 14, color: cfg.text, fontFamily: "monospace" }}>
@@ -397,6 +401,8 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
   const [isResizingZone, setIsResizingZone] = useState(false);
   const [structureMode, setStructureMode] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [showOrientationAlert, setShowOrientationAlert] = useState(false);
   const [canvasHeight, setCanvasHeight] = useState(() => {
     // Cargar altura guardada en localStorage
     const saved = localStorage.getItem('floorplan_canvas_height');
@@ -410,6 +416,33 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
   const resizeStart = useRef(null);
   const structureStart = useRef(null);
   const moveStart = useRef(null);
+  const touchStartTime = useRef(0);
+
+  // Detectar móvil y orientación
+  useEffect(() => {
+    const checkOrientation = () => {
+      const mobile = window.innerWidth <= 768
+      const landscape = window.innerWidth > window.innerHeight
+      setIsMobile(mobile)
+      setIsLandscape(landscape)
+      
+      // Mostrar alerta si es móvil y está en vertical
+      if (mobile && !landscape) {
+        setShowOrientationAlert(true)
+      } else {
+        setShowOrientationAlert(false)
+      }
+    }
+    
+    checkOrientation()
+    window.addEventListener('resize', checkOrientation)
+    window.addEventListener('orientationchange', checkOrientation)
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation)
+      window.removeEventListener('orientationchange', checkOrientation)
+    }
+  }, [])
 
   // Detectar móvil
   useEffect(() => {
@@ -610,6 +643,86 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
             console.error('❌ Error guardando posición de mesa:', error);
           } else {
             console.log('✅ Mesa guardada correctamente:', data);
+          }
+        } catch (error) {
+          console.error('❌ Error guardando posición de mesa:', error);
+        }
+      }
+    }
+    dragging.current = null;
+  }, [localTables]);
+
+  // Funciones para Touch (móviles)
+  const handleTouchStart = useCallback((e, id) => {
+    // Solo admin puede arrastrar mesas
+    if (!isAdmin) {
+      console.log('🚫 Solo administradores pueden editar el Floor Plan');
+      return;
+    }
+    
+    e.preventDefault();
+    const touch = e.touches[0];
+    const canvas = canvasRef.current.getBoundingClientRect();
+    const table = localTables.find((t) => t.id === id);
+    
+    if (table) {
+      dragging.current = {
+        id,
+        offsetX: touch.clientX - canvas.left - table.x,
+        offsetY: touch.clientY - canvas.top - table.y,
+      };
+      hasDragged.current = false;
+      touchStartTime.current = Date.now();
+      console.log('👆 Touch DOWN en mesa:', { id, name: table.name });
+    }
+  }, [localTables, isAdmin]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!dragging.current) return;
+    if (!canvasRef.current) return;
+
+    e.preventDefault();
+    const touch = e.touches[0];
+    const draggingId = dragging.current.id;
+    if (!draggingId) return;
+
+    const canvas = canvasRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(canvas.width - TABLE_SIZE, touch.clientX - canvas.left - dragging.current.offsetX));
+    const y = Math.max(0, Math.min(canvas.height - TABLE_SIZE, touch.clientY - canvas.top - dragging.current.offsetY));
+
+    setLocalTables((prev) => {
+      if (!prev || !Array.isArray(prev)) return prev;
+      return prev.map((t) => {
+        if (!t || !t.id) return t;
+        return t.id === draggingId ? { ...t, x, y } : t;
+      });
+    });
+    hasDragged.current = true;
+    console.log('👆 Touch MOVE - arrastrando:', { draggingId, x: Math.round(x), y: Math.round(y) });
+  }, []);
+
+  const handleTouchEnd = useCallback(async () => {
+    console.log('👆 Touch UP - dragging.current:', dragging.current, 'hasDragged:', hasDragged.current);
+    
+    // Guardar posición en Supabase si se movió una mesa
+    if (dragging.current && dragging.current.id) {
+      const table = localTables.find(t => t.id === dragging.current.id);
+      if (table && table.x && table.y) {
+        try {
+          const { data, error } = await supabase
+            .from('tables')
+            .update({
+              floor_x: Math.round(table.x),
+              floor_y: Math.round(table.y),
+              floor_shape: table.shape || 'round',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', dragging.current.id);
+
+          if (error) {
+            console.error('❌ Error guardando posición de mesa:', error);
+          } else {
+            console.log('✅ Mesa guardada correctamente');
           }
         } catch (error) {
           console.error('❌ Error guardando posición de mesa:', error);
@@ -1297,6 +1410,66 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
 
       {/* Canvas */}
       <div style={{ position: "relative", margin: 24, borderRadius: 16, overflow: "hidden", background: "#e2e8f0", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+        {/* Alerta de orientación para móviles */}
+        {showOrientationAlert && isAdmin && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+            color: 'white',
+            padding: '1rem',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.75rem',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
+            animation: 'slideDown 0.3s ease-out'
+          }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                <path d="M12 18h.01"/>
+              </svg>
+            </div>
+            <div>
+              <div>📱 Gira tu dispositivo</div>
+              <div style={{fontSize: '0.75rem', fontWeight: 400, opacity: 0.9}}>Coloca en horizontal para ver el Floor Plan completo</div>
+            </div>
+            <button
+              onClick={() => setShowOrientationAlert(false)}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                padding: '0.5rem',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        )}
+
         {isLoadingZones && (
           <div style={{
             position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
@@ -1319,8 +1492,22 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
             handleMoveElement(e);
             if (structureMode) handleDrawStructure(e);
           }}
+          onTouchMove={(e) => {
+            handleTouchMove(e);
+            handleDrawZone(e);
+            handleResizeZone(e);
+            handleMoveElement(e);
+            if (structureMode) handleDrawStructure(e);
+          }}
           onMouseUp={() => {
             handleMouseUp();
+            handleStopDrawingZone();
+            handleStopResizeZone();
+            handleStopMoveElement();
+            if (structureMode) handleStopStructure();
+          }}
+          onTouchEnd={() => {
+            handleTouchEnd();
             handleStopDrawingZone();
             handleStopResizeZone();
             handleStopMoveElement();
@@ -1334,6 +1521,16 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
             handleStopStructure();
           }}
           onMouseDown={(e) => {
+            if (isDrawingZone) handleStartDrawingZone(e);
+            else if (isResizingZone) { }
+            else if (structureMode) handleStartStructure(e, structureMode);
+            else {
+              setSelectedId(null);
+              setSelectedZoneId(null);
+              setSelectedStructureId(null);
+            }
+          }}
+          onTouchStart={(e) => {
             if (isDrawingZone) handleStartDrawingZone(e);
             else if (isResizingZone) { }
             else if (structureMode) handleStartStructure(e, structureMode);
@@ -1359,6 +1556,7 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
             cursor: isDrawingZone ? "crosshair" : isResizingZone ? "se-resize" : moveStart.current ? "move" : structureMode ? "crosshair" : "default",
             overflow: 'hidden',
             transition: 'height 0.3s ease',
+            touchAction: 'none'
           }}
         >
           {/* Decor */}
@@ -1401,6 +1599,9 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
               table={table}
               isSelected={table.id === selectedId}
               onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               onClick={handleTableClick}
               isAdmin={isAdmin}
             />
