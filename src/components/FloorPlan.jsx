@@ -425,13 +425,6 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
       const landscape = window.innerWidth > window.innerHeight
       setIsMobile(mobile)
       setIsLandscape(landscape)
-      
-      // Mostrar alerta si es móvil y está en vertical
-      if (mobile && !landscape) {
-        setShowOrientationAlert(true)
-      } else {
-        setShowOrientationAlert(false)
-      }
     }
     
     checkOrientation()
@@ -1279,6 +1272,28 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
             </span>
           )}
         </div>
+        {/* Mensaje informativo para móviles */}
+        {isMobile && isAdmin && !showOrientationAlert && (
+          <div style={{
+            width: '100%',
+            padding: '8px',
+            background: '#eff6ff',
+            borderRadius: '6px',
+            fontSize: '11px',
+            color: '#1e40af',
+            fontWeight: 500,
+            marginTop: isMobile ? '8px' : '0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4M12 8h.01"/>
+            </svg>
+            Da clic en el botón "Ver Floor Plan Completo" para ver más mesas
+          </div>
+        )}
         <div style={{ display: "flex", gap: 12, fontSize: 11, flexWrap: 'wrap', alignItems: 'center' }}>
           {Object.entries(STATUS_CONFIG).map(([key, val]) => (
             <div key={key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -1410,64 +1425,70 @@ export default function FloorPlan({ tables = [], onTableClick, isAdmin = false }
 
       {/* Canvas */}
       <div style={{ position: "relative", margin: 24, borderRadius: 16, overflow: "hidden", background: "#e2e8f0", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
-        {/* Alerta de orientación para móviles */}
-        {showOrientationAlert && isAdmin && (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-            color: 'white',
-            padding: '1rem',
-            zIndex: 2000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.75rem',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
-            animation: 'slideDown 0.3s ease-out'
-          }}>
-            <div style={{
-              width: 32,
-              height: 32,
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.2)',
+        {/* Botón para ver Floor Plan completo en móviles */}
+        {isMobile && !showOrientationAlert && (
+          <button
+            onClick={() => {
+              setCanvasHeight(800)
+              setShowOrientationAlert(true)
+            }}
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              zIndex: 1500,
+              boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-                <path d="M12 18h.01"/>
-              </svg>
-            </div>
-            <div>
-              <div>📱 Gira tu dispositivo</div>
-              <div style={{fontSize: '0.75rem', fontWeight: 400, opacity: 0.9}}>Coloca en horizontal para ver el Floor Plan completo</div>
-            </div>
-            <button
-              onClick={() => setShowOrientationAlert(false)}
-              style={{
-                background: 'rgba(255,255,255,0.2)',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer',
-                padding: '0.5rem',
-                borderRadius: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-          </div>
+              gap: '0.5rem'
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+            Ver Floor Plan Completo
+          </button>
+        )}
+
+        {/* Botón para volver a vista normal */}
+        {showOrientationAlert && (
+          <button
+            onClick={() => {
+              setCanvasHeight(520)
+              setShowOrientationAlert(false)
+            }}
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              background: 'linear-gradient(135deg, #475569 0%, #334155 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              zIndex: 1500,
+              boxShadow: '0 4px 12px rgba(71, 85, 105, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 3l-7 7 7 7M3 10h18M3 14h18"/>
+            </svg>
+            Vista Normal
+          </button>
         )}
 
         {isLoadingZones && (
