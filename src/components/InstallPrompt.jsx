@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react'
 import { Download, X, Smartphone } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 
 function InstallPrompt() {
+  const location = useLocation()
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showPrompt, setShowPrompt] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
 
   useEffect(() => {
+    // Solo mostrar en la página de login
+    if (location.pathname !== '/login') {
+      setShowPrompt(false)
+      return
+    }
+
     // Detectar iOS
     const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
     setIsIOS(isAppleDevice)
@@ -15,7 +23,7 @@ function InstallPrompt() {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault()
       setDeferredPrompt(e)
-      
+
       // Mostrar después de 3 segundos si el usuario no ha instalado
       const hasInstalled = localStorage.getItem('pwaInstalled')
       if (!hasInstalled) {
@@ -33,7 +41,7 @@ function InstallPrompt() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     }
-  }, [])
+  }, [location.pathname])
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {

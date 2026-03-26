@@ -19,12 +19,11 @@ function Dashboard() {
   const [ordenesRecientes, setOrdenesRecientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [periodo, setPeriodo] = useState('hoy')
   const toast = useToast()
 
   useEffect(() => {
     fetchDashboardData()
-  }, [periodo])
+  }, [])
 
   async function fetchDashboardData() {
     try {
@@ -170,20 +169,6 @@ function Dashboard() {
             {profile?.full_name && ` | Bienvenido, ${profile.full_name}`}
           </p>
         </div>
-        {profile?.role !== 'kitchen' && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {['hoy', 'semana', 'mes'].map(p => (
-              <button
-                key={p}
-                className={periodo === p ? 'btn btn-primary' : 'btn btn-outline'}
-                onClick={() => setPeriodo(p)}
-                style={{ textTransform: 'capitalize' }}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Alerta de órdenes pendientes - Solo admin y meseros */}

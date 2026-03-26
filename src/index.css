@@ -351,12 +351,33 @@ tbody tr:hover {
   border-radius: 0.5rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .toast-success { background: #16a34a; }
 .toast-error { background: #dc2626; }
 .toast-warning { background: #f59e0b; }
 .toast-info { background: #3b82f6; }
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  margin-left: 0.75rem;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
 
 /* Loading */
 .loading-spinner {

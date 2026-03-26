@@ -1,24 +1,29 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Edit, Trash2, Users, Search, Calendar, Clock, ShoppingBag, UserCheck } from 'lucide-react'
+import { Plus, Minus, Edit, Trash2, Users, Search, Calendar, Clock, ShoppingBag, UserCheck, LayoutGrid, List } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import TableMap from '../components/FloorPlan'
 
 function Tables() {
   const { profile } = useAuth()
   const [tables, setTables] = useState([])
-  const [waiters, setWaiters] = useState([])  // Lista de meseros disponibles
+  const [waiters, setWaiters] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [showReservationModal, setShowReservationModal] = useState(false)
-  const [showWaiterModal, setShowWaiterModal] = useState(false)  // Modal para asignar mesero
+  const [showWaiterModal, setShowWaiterModal] = useState(false)
   const [editingTable, setEditingTable] = useState(null)
-  const [selectedTableForWaiter, setSelectedTableForWaiter] = useState(null)  // Mesa para asignar mesero
-  const [selectedWaiter, setSelectedWaiter] = useState('')  // Mesero seleccionado
+  const [selectedTableForWaiter, setSelectedTableForWaiter] = useState(null)
+  const [selectedWaiter, setSelectedWaiter] = useState('')
   const [selectedTableForReservation, setSelectedTableForReservation] = useState(null)
   const [filterSection, setFilterSection] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [isTablet, setIsTablet] = useState(typeof window !== 'undefined' ? window.innerWidth <= 1280 : false)
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false)
+  const [viewMode, setViewMode] = useState('floorplan') // 'floorplan' o 'list'
   const [formData, setFormData] = useState({ name: '', capacity: 4, section: 'main', code: '' })
   const [reservationData, setReservationData] = useState({
     customer_name: '',
@@ -41,6 +46,32 @@ function Tables() {
   const [preOrderQuantity, setPreOrderQuantity] = useState(1)
   const [preOrderNotes, setPreOrderNotes] = useState('')
   const toast = useToast()
+  const navigate = useNavigate()
+
+  // Manejar clic en una mesa (ir al POS)
+  function handleTableClick(table) {
+    console.log('🖱️ Click en mesa desde Floor Plan:', {
+      id: table.id,
+      name: table.name,
+      status: table.status
+    })
+    
+    if (table.status === 'available') {
+      // Mesa disponible - preguntar si quiere ocupar
+      if (confirm(`¿Desea ocupar la mesa ${table.name} y tomar pedido?`)) {
+        const url = `/pos?table=${table.id}`
+        console.log('🧭 Navegando a:', url)
+        navigate(url)
+      } else {
+        console.log('❌ Usuario canceló la ocupación de la mesa')
+      }
+    } else {
+      // Mesa ocupada o reservada - ir al POS para ver pedido
+      const url = `/pos?table=${table.id}`
+      console.log('🧭 Navegando a:', url)
+      navigate(url)
+    }
+  }
 
   const sections = [
     { id: 'main', name: 'Principal', icon: '🍽️' },
@@ -54,6 +85,15 @@ function Tables() {
     if (profile?.role === 'admin') {
       fetchWaiters()
     }
+
+    const handleResize = () => {
+      const width = window.innerWidth
+      setIsMobile(width <= 768)
+      setIsTablet(width > 768 && width <= 1280)
+    }
+    window.addEventListener('resize', handleResize)
+    handleResize()
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   async function fetchWaiters() {
@@ -140,8 +180,23 @@ function Tables() {
         }
       })
 
+      // Obtener mesas con órdenes activas (para marcar como occupied)
+      const { data: ordenesActivas } = await supabase
+        .from('orders')
+        .select('table_id')
+        .in('status', ['pending', 'cooking', 'ready', 'served'])
+
+      const mesasConOrden = new Set(ordenesActivas?.map(o => o.table_id) || [])
+
+      console.log('📋 Mesas con orden activa:', mesasConOrden.size)
+
       // Actualizar estado de las mesas
       const tablesConEstado = data.map(table => {
+        // Si tiene orden activa, está occupied
+        if (mesasConOrden.has(table.id)) {
+          return { ...table, status: 'occupied', has_active_order: true }
+        }
+        // Si tiene reserva y no está occupied, está reserved
         if (mesasReservadas[table.id] && table.status !== 'occupied') {
           return { ...table, status: 'reserved', reservation: mesasReservadas[table.id] }
         }
@@ -149,6 +204,7 @@ function Tables() {
       })
 
       console.log('🪑 Mesas con reserva:', tablesConEstado.filter(t => t.reservation).length)
+      console.log('🪑 Mesas ocupadas:', tablesConEstado.filter(t => t.status === 'occupied').length)
 
       setTables(tablesConEstado || [])
     } catch (error) {
@@ -207,11 +263,66 @@ function Tables() {
   }
 
   async function updateTableStatus(id, status) {
+    console.log('🔄 Actualizando estado de mesa:', { id, status })
+    
+    // Verificar si la mesa tiene una orden activa antes de liberar
+    if (status === 'available') {
+      const { data: ordenesActivas } = await supabase
+        .from('orders')
+        .select('id, status')
+        .eq('table_id', id)
+        .in('status', ['pending', 'cooking', 'ready', 'served'])
+        .limit(1)
+
+      if (ordenesActivas && ordenesActivas.length > 0) {
+        console.log('⚠️ La mesa tiene una orden activa:', ordenesActivas[0].id, 'Estado:', ordenesActivas[0].status)
+        
+        const confirmar = window.confirm(
+          '¿Estás seguro de que deseas liberar esta mesa?\n\n' +
+          'El pedido activo se CANCELARÁ automáticamente.'
+        )
+        
+        if (!confirmar) {
+          console.log('❌ Usuario canceló liberar mesa')
+          return
+        }
+        
+        // Cancelar pedido automáticamente
+        console.log('❌ Cancelando pedido...')
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({ status: 'cancelled' })
+          .eq('id', ordenesActivas[0].id)
+        
+        if (orderError) {
+          console.error('❌ Error al cancelar pedido:', orderError)
+          toast.error('Error al cancelar el pedido')
+          return
+        }
+        console.log('❌ Pedido cancelado')
+        toast.success('Pedido cancelado - Mesa liberada')
+      }
+    }
+    
     try {
-      const { error } = await supabase.from('tables').update({ status }).eq('id', id)
-      if (error) throw error
+      console.log('💾 Actualizando mesa en BD...', { id, status })
+      
+      const { error } = await supabase
+        .from('tables')
+        .update({ status })
+        .eq('id', id)
+      
+      if (error) {
+        console.error('❌ Error al actualizar mesa:', error)
+        throw error
+      }
+      
+      console.log('✅ Mesa actualizada en BD')
       toast.success('Estado actualizado')
-      fetchTables()
+      
+      console.log('🔄 Recargando lista de mesas...')
+      await fetchTables()
+      console.log('✅ Mesas recargadas')
 
       // Si ocupó la mesa, preguntar si quiere crear pedido
       if (status === 'occupied') {
@@ -223,28 +334,32 @@ function Tables() {
         }, 500)
       }
     } catch (error) {
+      console.error('❌ Error al actualizar estado:', error)
       toast.error('Error: ' + error.message)
     }
   }
 
   async function assignWaiter(tableId, waiterId) {
     try {
+      // Convertir string vacío a null
+      const newWaiterId = waiterId === '' ? null : waiterId
+      
       const { error } = await supabase
         .from('tables')
-        .update({ waiter_id: waiterId })
+        .update({ waiter_id: newWaiterId })
         .eq('id', tableId)
-      
+
       if (error) throw error
-      
-      const waiter = waiters.find(w => w.id === waiterId)
+
       const table = tables.find(t => t.id === tableId)
-      
-      if (waiterId) {
-        toast.success(`Mesa ${table?.name} asignada a ${waiter?.full_name}`)
+
+      if (newWaiterId) {
+        const waiter = waiters.find(w => w.id === newWaiterId)
+        toast.success(`Mesa ${table?.name} asignada a ${waiter?.full_name || 'mesero'}`)
       } else {
-        toast.success('Mesero desasignado de la mesa')
+        toast.success('Mesero desasignado de la mesa ' + (table?.name || ''))
       }
-      
+
       setShowWaiterModal(false)
       fetchTables()
     } catch (error) {
@@ -460,18 +575,66 @@ function Tables() {
 
   return (
     <div className="fade-in">
-      <div className="page-header">
+      <div className="page-header" style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '0.75rem' : '0' }}>
         <div>
-          <h2>Gestión de Mesas</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
+          <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem' }}>Gestión de Mesas</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
             {tables.length} mesas | {tables.filter(t => t.status === 'occupied').length} ocupadas
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <Plus size={20} /> Nueva Mesa
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Botones de vista */}
+          <div style={{ display: 'flex', background: 'white', borderRadius: '0.5rem', border: '1px solid var(--border)' }}>
+            <button
+              className={viewMode === 'floorplan' ? 'btn btn-primary' : 'btn btn-outline'}
+              onClick={() => setViewMode('floorplan')}
+              style={{ borderRadius: 0, border: 'none', padding: isMobile ? '0.5rem' : '0.625rem' }}
+              title="Floor Plan"
+            >
+              <LayoutGrid size={isMobile ? 16 : 18} />
+            </button>
+            <button
+              className={viewMode === 'list' ? 'btn btn-primary' : 'btn btn-outline'}
+              onClick={() => setViewMode('list')}
+              style={{ borderRadius: 0, border: 'none', padding: isMobile ? '0.5rem' : '0.625rem' }}
+              title="Lista"
+            >
+              <List size={isMobile ? 16 : 18} />
+            </button>
+          </div>
+          {!isMobile && (
+            <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+              <Plus size={20} /> Nueva Mesa
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Botón móvil para Nueva Mesa */}
+      {isMobile && (
+        <button
+          className="btn btn-primary"
+          onClick={() => setShowModal(true)}
+          style={{ width: '100%', marginBottom: '1rem', justifyContent: 'center' }}
+        >
+          <Plus size={18} /> Nueva Mesa
+        </button>
+      )}
+
+      {/* Floor Plan */}
+      {viewMode === 'floorplan' && (
+        <div className="card" style={{ padding: 0 }}>
+          <TableMap
+            tables={tables}
+            onTableClick={handleTableClick}
+            isAdmin={profile?.role === 'admin'}
+          />
+        </div>
+      )}
+
+      {/* Lista */}
+      {viewMode === 'list' && (
+        <>
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           {sections.map(section => (
@@ -503,23 +666,27 @@ function Tables() {
       ) : (
         Object.entries(tablesBySection).map(([section, sectionTables]) => (
           <div key={section}>
-            <h3 style={{ margin: '1.5rem 0 1rem', fontSize: '1.125rem', color: 'var(--text-secondary)' }}>
+            <h3 style={{ margin: isMobile ? '1rem 0 0.75rem' : '1.5rem 0 1rem', fontSize: isMobile ? '1rem' : '1.125rem', color: 'var(--text-secondary)' }}>
               {sections.find(s => s.id === section)?.icon} {sections.find(s => s.id === section)?.name || section}
-              <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem' }}>({sectionTables.length})</span>
+              <span style={{ marginLeft: '0.5rem', fontSize: isMobile ? '0.75rem' : '0.875rem' }}>({sectionTables.length})</span>
             </h3>
-            <div className="grid grid-4">
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : isTablet ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)',
+              gap: isMobile ? '0.75rem' : isTablet ? '1rem' : '1.5rem'
+            }}>
               {sectionTables.map((table) => {
                 const statusConfig = getStatusConfig(table.status)
                 return (
-                  <div key={table.id} className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                      <h4 style={{ fontSize: '1rem' }}>{table.name}</h4>
-                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <div key={table.id} className="card" style={{ padding: isMobile ? '0.625rem' : isTablet ? '0.875rem' : '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: isMobile ? '0.5rem' : '0.625rem' }}>
+                      <h4 style={{ fontSize: isMobile ? '0.8rem' : isTablet ? '0.925rem' : '1rem', margin: 0 }}>{table.name}</h4>
+                      <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
                         {/* Botón para asignar mesero (solo admin) */}
                         {profile?.role === 'admin' && (
-                          <button 
-                            className="btn btn-outline" 
-                            style={{ padding: '0.25rem' }} 
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '0.25rem', minWidth: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={() => {
                               setSelectedTableForWaiter(table)
                               setSelectedWaiter(table.waiter_id || '')
@@ -530,7 +697,7 @@ function Tables() {
                             <UserCheck size={14} />
                           </button>
                         )}
-                        <button className="btn btn-outline" style={{ padding: '0.25rem' }} onClick={() => editTable(table)}>
+                        <button className="btn btn-outline" style={{ padding: '0.25rem', minWidth: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => editTable(table)}>
                           <Edit size={14} />
                         </button>
                         <button className="btn btn-danger" style={{ padding: '0.25rem' }} onClick={() => deleteTable(table.id)}>
@@ -553,15 +720,15 @@ function Tables() {
                       }}>
                         <UserCheck size={14} style={{ color: '#3b82f6' }} />
                         <span style={{ color: '#1e40af', fontWeight: 600 }}>
-                          {table.waiter_name || 'Mesero asignado'}
+                          👤 {table.waiter_name || 'Mesero'}
                         </span>
                       </div>
                     )}
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                      <Users size={16} /> {table.capacity} personas
+                    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.375rem' : '0.5rem', marginBottom: isMobile ? '0.5rem' : '0.75rem', color: 'var(--text-secondary)', fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                      <Users size={isMobile ? 14 : 16} /> {table.capacity} {isMobile ? 'p.' : 'personas'}
                     </div>
-                    <span className={'badge badge-' + statusConfig.color} style={{ marginBottom: '1rem', display: 'inline-block' }}>
+                    <span className={'badge badge-' + statusConfig.color} style={{ marginBottom: isMobile ? '0.5rem' : '1rem', display: 'inline-block', fontSize: isMobile ? '0.65rem' : '0.75rem', padding: isMobile ? '3px 8px' : '4px 12px' }}>
                       {statusConfig.label}
                     </span>
                     
@@ -594,30 +761,30 @@ function Tables() {
                     )}
                     
                     {table.status === 'available' ? (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-danger" style={{ flex: 1, fontSize: '0.75rem' }} onClick={() => updateTableStatus(table.id, 'occupied')}>Ocupar</button>
-                        <button className="btn btn-warning" style={{ flex: 1, fontSize: '0.75rem' }} onClick={() => openReservationModal(table)}>
-                          <Calendar size={14} style={{ marginRight: '0.25rem' }} /> Reservar
+                      <div style={{ display: 'flex', gap: isMobile ? '0.375rem' : '0.5rem', flexDirection: isMobile ? 'column' : 'row' }}>
+                        <button className="btn btn-danger" style={{ flex: 1, fontSize: isMobile ? '0.65rem' : '0.75rem', padding: isMobile ? '0.5rem' : '0.625rem' }} onClick={() => updateTableStatus(table.id, 'occupied')}>Ocupar</button>
+                        <button className="btn btn-warning" style={{ flex: 1, fontSize: isMobile ? '0.65rem' : '0.75rem', padding: isMobile ? '0.5rem' : '0.625rem' }} onClick={() => openReservationModal(table)}>
+                          <Calendar size={isMobile ? 12 : 14} style={{ marginRight: isMobile ? '0' : '0.25rem' }} /> {isMobile ? 'Reservar' : ''}
                         </button>
                       </div>
                     ) : table.status === 'reserved' ? (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: isMobile ? '0.375rem' : '0.5rem' }}>
                         {table.reservation && isReservationTime(table.reservation) ? (
-                          <a href={`/pos?table=${table.id}`} className="btn btn-primary" style={{ flex: 1, fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                            🛒 Pedido
+                          <a href={`/pos?table=${table.id}`} className="btn btn-primary" style={{ flex: 1, fontSize: isMobile ? '0.65rem' : '0.75rem', padding: isMobile ? '0.5rem' : '0.625rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? '0.25rem' : '0.5rem' }}>
+                            🛒 {isMobile ? '' : 'Pedido'}
                           </a>
                         ) : (
-                          <button className="btn btn-outline" disabled style={{ flex: 1, fontSize: '0.75rem' }}>
-                            ⏳ Pendiente
+                          <button className="btn btn-outline" disabled style={{ flex: 1, fontSize: isMobile ? '0.65rem' : '0.75rem', padding: isMobile ? '0.5rem' : '0.625rem' }}>
+                            ⏳ {isMobile ? 'Pendiente' : ''}
                           </button>
                         )}
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <a href={`/pos?table=${table.id}`} className="btn btn-primary" style={{ flex: 1, fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                          🛒 Pedido
+                      <div style={{ display: 'flex', gap: isMobile ? '0.375rem' : '0.5rem', flexDirection: isMobile ? 'column' : 'row' }}>
+                        <a href={`/pos?table=${table.id}`} className="btn btn-primary" style={{ flex: 1, fontSize: isMobile ? '0.65rem' : '0.75rem', padding: isMobile ? '0.5rem' : '0.625rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? '0.25rem' : '0.5rem' }}>
+                          🛒 {isMobile ? '' : 'Pedido'}
                         </a>
-                        <button className="btn btn-success" style={{ flex: 1, fontSize: '0.75rem' }} onClick={() => updateTableStatus(table.id, 'available')}>Liberar</button>
+                        <button className="btn btn-success" style={{ flex: 1, fontSize: isMobile ? '0.65rem' : '0.75rem', padding: isMobile ? '0.5rem' : '0.625rem' }} onClick={() => updateTableStatus(table.id, 'available')}>Liberar</button>
                       </div>
                     )}
                   </div>
@@ -626,6 +793,8 @@ function Tables() {
             </div>
           </div>
         ))
+      )}
+      </>
       )}
 
       {showModal && (
@@ -806,14 +975,59 @@ function Tables() {
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label>Cantidad</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={preOrderQuantity}
-                          onChange={(e) => setPreOrderQuantity(parseInt(e.target.value) || 1)}
-                          min="1"
-                          max="20"
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => setPreOrderQuantity(Math.max(preOrderQuantity - 1, 1))}
+                            disabled={preOrderQuantity === 1}
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: preOrderQuantity === 1 ? 0.5 : 1,
+                              cursor: preOrderQuantity === 1 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <Minus size={18} />
+                          </button>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={preOrderQuantity}
+                            onChange={(e) => setPreOrderQuantity(parseInt(e.target.value) || 1)}
+                            min="1"
+                            max="20"
+                            style={{ 
+                              width: '80px', 
+                              textAlign: 'center',
+                              fontWeight: 600,
+                              fontSize: '1rem'
+                            }}
+                            readOnly
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => setPreOrderQuantity(Math.min(preOrderQuantity + 1, 20))}
+                            disabled={preOrderQuantity >= 20}
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: preOrderQuantity >= 20 ? 0.5 : 1,
+                              cursor: preOrderQuantity >= 20 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <Plus size={18} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <div className="form-group">
@@ -953,7 +1167,7 @@ function Tables() {
               }}>
                 <UserCheck size={16} style={{color: '#3b82f6'}} />
                 <span style={{color: '#1e40af', fontWeight: 600}}>
-                  {waiters.find(w => w.id === selectedWaiter)?.full_name}
+                  👤 {waiters.find(w => w.id === selectedWaiter)?.full_name || 'Mesero seleccionado'}
                 </span>
               </div>
             )}

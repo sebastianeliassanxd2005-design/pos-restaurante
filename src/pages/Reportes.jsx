@@ -8,7 +8,7 @@ function Reportes() {
   const { profile } = useAuth()
   const toast = useToast()
   const [loading, setLoading] = useState(true)
-  const [filterPeriod, setFilterPeriod] = useState('today')
+  const [filterPeriod, setFilterPeriod] = useState('week')
   const [reportData, setReportData] = useState({
     totalVentas: 0,
     totalPedidos: 0,
@@ -32,9 +32,7 @@ function Reportes() {
       const ahora = new Date()
       let fechaInicio = new Date()
 
-      if (filterPeriod === 'today') {
-        fechaInicio.setHours(0, 0, 0, 0)
-      } else if (filterPeriod === 'week') {
+      if (filterPeriod === 'week') {
         const diaSemana = ahora.getDay()
         fechaInicio.setDate(ahora.getDate() - diaSemana)
         fechaInicio.setHours(0, 0, 0, 0)
@@ -217,12 +215,12 @@ function Reportes() {
       doc.setFont('arial', 'normal')
       doc.setFontSize(12)
       doc.setTextColor('#666666')
-      const periodoLabel = filterPeriod === 'today' ? 'Hoy' : filterPeriod === 'week' ? 'Esta Semana' : 'Este Mes'
-      const fechaGeneracion = new Date().toLocaleDateString('es-ES', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      const periodoLabel = filterPeriod === 'week' ? 'Esta Semana' : 'Este Mes'
+      const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       })
       doc.text(`${periodoLabel} - ${fechaGeneracion}`, pageWidth / 2, yPos, { align: 'center' })
       
@@ -424,13 +422,13 @@ function Reportes() {
   function exportToExcel() {
     try {
       toast.info('Generando Excel...')
-      
-      const periodoLabel = filterPeriod === 'today' ? 'Hoy' : filterPeriod === 'week' ? 'Esta Semana' : 'Este Mes'
-      const fechaGeneracion = new Date().toLocaleDateString('es-ES', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+
+      const periodoLabel = filterPeriod === 'week' ? 'Esta Semana' : 'Este Mes'
+      const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       })
       
       // Crear HTML table que Excel puede abrir
@@ -586,7 +584,6 @@ function Reportes() {
             value={filterPeriod}
             onChange={(e) => setFilterPeriod(e.target.value)}
           >
-            <option value="today">Hoy</option>
             <option value="week">Esta Semana</option>
             <option value="month">Este Mes</option>
           </select>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   ShoppingBag, Clock, CheckCircle, Utensils,
-  Search, Plus, AlertCircle, Trash2
+  Search, Plus, AlertCircle, Trash2, XCircle
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -14,15 +14,17 @@ const PEDIDOS_ESTADOS = {
   COOKING: 'cooking',
   READY: 'ready',
   SERVED: 'served',
-  PAID: 'paid'
+  PAID: 'paid',
+  CANCELLED: 'cancelled',
+  RESERVATION: 'reservation_pending' // Pedidos de reservas
 }
 
 const ESTADOS_CONFIG = {
-  [PEDIDOS_ESTADOS.PENDING]: { 
-    label: 'Pendiente', 
-    color: '#f59e0b', 
+  [PEDIDOS_ESTADOS.PENDING]: {
+    label: 'Pendiente',
+    color: '#f59e0b',
     bg: '#fef3c7',
-    icon: Clock 
+    icon: Clock
   },
   [PEDIDOS_ESTADOS.COOKING]: {
     label: 'En Cocina',
@@ -30,23 +32,35 @@ const ESTADOS_CONFIG = {
     bg: '#dbeafe',
     icon: CheckCircle
   },
-  [PEDIDOS_ESTADOS.READY]: { 
-    label: 'Listo', 
-    color: '#22c55e', 
+  [PEDIDOS_ESTADOS.READY]: {
+    label: 'Listo',
+    color: '#22c55e',
     bg: '#dcfce7',
-    icon: CheckCircle 
+    icon: CheckCircle
   },
-  [PEDIDOS_ESTADOS.SERVED]: { 
-    label: 'Servido', 
-    color: '#64748b', 
+  [PEDIDOS_ESTADOS.SERVED]: {
+    label: 'Servido',
+    color: '#64748b',
     bg: '#f1f5f9',
-    icon: Utensils 
+    icon: Utensils
   },
-  [PEDIDOS_ESTADOS.PAID]: { 
-    label: 'Pagado', 
-    color: '#22c55e', 
+  [PEDIDOS_ESTADOS.PAID]: {
+    label: 'Pagado',
+    color: '#22c55e',
     bg: '#dcfce7',
-    icon: CheckCircle 
+    icon: CheckCircle
+  },
+  [PEDIDOS_ESTADOS.CANCELLED]: {
+    label: 'Cancelado',
+    color: '#ef4444',
+    bg: '#fee2e2',
+    icon: XCircle
+  },
+  [PEDIDOS_ESTADOS.RESERVATION]: {
+    label: 'Reserva',
+    color: '#8b5cf6',
+    bg: '#f3e8ff',
+    icon: Clock
   }
 }
 
@@ -88,10 +102,25 @@ function Pedidos() {
       if (profile?.role === 'admin' && selectedWaiter !== 'all') {
         fetchMesasDelMesero()
       }
+      // Verificar reservas para enviar automáticamente a cocina
+      verificarYEnviarReservasAutomaticas()
     }, 15000) // Cada 15 segundos
 
     return () => clearInterval(interval)
   }, [filtroEstado, selectedWaiter]) // Se re-ejecuta cuando cambia el filtro de estado o mesero
+
+  // Efecto para verificar y enviar reservas automáticamente cuando es la hora
+  useEffect(() => {
+    // Verificar inmediatamente al cargar
+    verificarYEnviarReservasAutomaticas()
+    
+    // Verificar cada minuto
+    const interval = setInterval(() => {
+      verificarYEnviarReservasAutomaticas()
+    }, 60000) // Cada 1 minuto
+    
+    return () => clearInterval(interval)
+  }, [])
 
   async function fetchMesasDelMesero() {
     try {
@@ -113,11 +142,12 @@ function Pedidos() {
     try {
       const hoy = new Date()
       hoy.setHours(0, 0, 0, 0)
+      const hoyStr = hoy.toLocaleDateString('en-CA') // YYYY-MM-DD
 
-      // Construir query base
+      // 1. Obtener pedidos normales (orders)
       let query = supabase
         .from('orders')
-        .select('*, tables (name), profiles (full_name)')  // Obtener nombre del mesero
+        .select('*, tables (name), profiles (full_name)')
         .gte('created_at', hoy.toISOString())
         .order('created_at', { ascending: false })
 
@@ -125,22 +155,63 @@ function Pedidos() {
       if (profile?.role === 'admin' && selectedWaiter !== 'all') {
         query = query.eq('waiter_id', selectedWaiter)
       }
-      // NOTA: Los meseros ven todos los pedidos por ahora
-      // Cuando el sistema esté migrado, descomentar esto:
-      // if (profile?.role === 'waiter') {
-      //   query = query.eq('waiter_id', profile.id)
-      // }
 
-      const { data, error } = await query
+      const { data: ordersData, error: ordersError } = await query
+      if (ordersError) throw ordersError
 
-      if (error) throw error
+      // 2. Obtener pedidos de reservas para hoy (reservation_items)
+      const { data: reservationsData, error: reservationsError } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          tables (name),
+          profiles (full_name),
+          reservation_items (*)
+        `)
+        .eq('reservation_date', hoyStr)
+        .in('status', ['confirmed', 'seated'])
+        .order('reservation_time', { ascending: true })
 
-      // Filtrar por estado seleccionado (solo si no es 'all')
-      let pedidosData = data || []
+      if (reservationsError) throw reservationsError
+
+      // 3. Convertir reservas a formato de pedidos
+      const pedidosDeReservas = reservationsData
+        ?.filter(reserva => reserva.reservation_items && reserva.reservation_items.length > 0)
+        .map(reserva => ({
+          id: `reservation_${reserva.id}`,
+          reservation_id: reserva.id,
+          table_id: reserva.table_id,
+          waiter_id: reserva.created_by,
+          status: 'reservation_pending', // Estado especial para reservas
+          total: reserva.reservation_items.reduce((sum, item) => sum + (item.subtotal || 0), 0),
+          created_at: reserva.created_at,
+          reservation_date: reserva.reservation_date,
+          reservation_time: reserva.reservation_time,
+          tables: reserva.tables,
+          profiles: reserva.profiles,
+          order_items: reserva.reservation_items,
+          is_reservation: true,
+          customer_name: reserva.customer_name
+        })) || []
+
+      console.log('📅 Pedidos de reservas:', pedidosDeReservas.length)
+
+      // 4. Combinar pedidos normales y de reservas
+      const todosPedidos = [...(ordersData || []), ...pedidosDeReservas]
+
+      // 5. Filtrar por estado seleccionado
+      let pedidosData = todosPedidos
       if (filtroEstado !== PEDIDOS_ESTADOS.ALL) {
-        pedidosData = pedidosData.filter(pedido => pedido.status === filtroEstado)
+        if (filtroEstado === 'reservation_pending') {
+          // Mostrar solo reservas
+          pedidosData = todosPedidos.filter(p => p.is_reservation)
+        } else {
+          // Mostrar solo pedidos normales con ese estado
+          pedidosData = todosPedidos.filter(p => !p.is_reservation && p.status === filtroEstado)
+        }
       }
 
+      console.log('📦 Total pedidos:', pedidosData.length)
       setPedidos(pedidosData)
     } catch (error) {
       console.error('Error fetching pedidos:', error)
@@ -200,6 +271,285 @@ function Pedidos() {
       await fetchPedidos()
     } catch (error) {
       toast.error('Error al actualizar pedido')
+    }
+  }
+
+  async function cancelarPedido(pedido) {
+    const esReserva = pedido.is_reservation || false
+    
+    const confirmCancel = window.confirm(
+      `¿Estás seguro de CANCELAR este ${esReserva ? 'pedido de reserva' : 'pedido'}?\n\n` +
+      `Mesa: ${pedido.tables?.name || 'N/A'}\n` +
+      `${esReserva ? `Cliente: ${pedido.customer_name || 'N/A'}\n` : ''}` +
+      `Total: $${parseFloat(pedido.total || 0).toFixed(2)}\n\n` +
+      `Esta acción no se puede deshacer.`
+    )
+    if (!confirmCancel) return
+
+    try {
+      if (esReserva) {
+        // Cancelar reserva
+        const { error: reservaError } = await supabase
+          .from('reservations')
+          .update({ status: 'cancelled' })
+          .eq('id', pedido.reservation_id)
+
+        if (reservaError) throw reservaError
+
+        // Eliminar reservation_items
+        if (pedido.order_items && pedido.order_items.length > 0) {
+          const itemIds = pedido.order_items.map(item => item.id)
+          if (itemIds.length > 0) {
+            await supabase
+              .from('reservation_items')
+              .delete()
+              .in('id', itemIds)
+          }
+        }
+
+        console.log('✅ Reserva cancelada:', pedido.reservation_id)
+      } else {
+        // Cancelar orden normal
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({ status: 'cancelled' })
+          .eq('id', pedido.id)
+
+        if (orderError) throw orderError
+
+        console.log('✅ Orden cancelada:', pedido.id)
+      }
+
+      // Liberar mesa (para ambos casos)
+      if (pedido.table_id) {
+        await supabase.from('tables').update({ status: 'available' }).eq('id', pedido.table_id)
+        console.log('✅ Mesa liberada:', pedido.table_id)
+      }
+
+      toast.success('✅ Pedido cancelado correctamente - Mesa liberada')
+      await fetchPedidos()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al cancelar pedido: ' + error.message)
+    }
+  }
+
+  // Verificar si ya es la hora de la reserva (permite enviar desde 1 hora antes hasta 2 horas después)
+  function verificarSiEsHoraDeReserva(reservationDate, reservationTime) {
+    if (!reservationDate || !reservationTime) return false
+
+    const ahora = new Date()
+    
+    // Crear fecha/hora de la reserva
+    const [year, month, day] = String(reservationDate).split('-')
+    const timeString = String(reservationTime).substring(0, 5) // "14:00"
+    const [hours, minutes] = timeString.split(':')
+    
+    const reservaDateTime = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hours),
+      parseInt(minutes)
+    )
+
+    // Permitir enviar desde 1 hora antes hasta 2 horas después de la hora de reserva
+    const unaHoraAntes = new Date(reservaDateTime.getTime() - 60 * 60 * 1000)
+    const dosHorasDespues = new Date(reservaDateTime.getTime() + 2 * 60 * 60 * 1000)
+
+    const dentroDelRango = ahora >= unaHoraAntes && ahora <= dosHorasDespues
+
+    return dentroDelRango
+  }
+
+  // Enviar pedido de reserva a cocina (crea una orden normal)
+  async function enviarReservaACocina(pedido) {
+    const confirm = window.confirm(`¿Enviar pedido de reserva a cocina?\n\nMesa: ${pedido.tables?.name || 'N/A'}\nCliente: ${pedido.customer_name || 'N/A'}\n\nSe creará una orden normal en cocina.`)
+    if (!confirm) return
+
+    try {
+      // Crear orden normal desde la reserva
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert([{
+          table_id: pedido.table_id,
+          waiter_id: pedido.waiter_id,
+          status: 'cooking', // Directamente a cocina
+          subtotal: pedido.total,
+          tax: pedido.total * 0.12,
+          total: pedido.total * 1.12,
+          notes: `Reserva ${pedido.reservation_time?.substring(0, 5)} - ${pedido.customer_name || ''}`
+        }])
+        .select()
+        .single()
+
+      if (orderError) throw orderError
+
+      // Insertar items de la reserva en la orden
+      if (pedido.order_items && pedido.order_items.length > 0) {
+        const orderItemsToInsert = pedido.order_items.map(item => ({
+          order_id: orderData.id,
+          product_id: item.product_id,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit_price: item.price,
+          subtotal: item.subtotal,
+          notes: item.notes,
+          status: 'cooking'
+        }))
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItemsToInsert)
+
+        if (itemsError) throw itemsError
+      }
+
+      // Actualizar reserva a "seated"
+      await supabase
+        .from('reservations')
+        .update({ status: 'seated' })
+        .eq('id', pedido.reservation_id)
+
+      // Actualizar mesa a ocupada
+      await supabase
+        .from('tables')
+        .update({ status: 'occupied' })
+        .eq('id', pedido.table_id)
+
+      toast.success('✅ Pedido enviado a cocina')
+      await fetchPedidos()
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al enviar a cocina: ' + error.message)
+    }
+  }
+
+  // Verificar y enviar reservas automáticamente cuando es la hora
+  async function verificarYEnviarReservasAutomaticas() {
+    try {
+      const hoy = new Date().toLocaleDateString('en-CA')
+      
+      // Obtener reservas de hoy
+      const { data: reservasHoy, error } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          tables (name),
+          profiles (full_name),
+          reservation_items (*)
+        `)
+        .eq('reservation_date', hoy)
+        .in('status', ['confirmed']) // Solo confirmed, no seated
+        .order('reservation_time', { ascending: true })
+
+      if (error || !reservasHoy) return
+
+      // Verificar cada reserva
+      for (const reserva of reservasHoy) {
+        if (!reserva.reservation_items || reserva.reservation_items.length === 0) continue
+
+        const esHoraDeReserva = verificarSiEsHoraDeReserva(reserva.reservation_date, reserva.reservation_time)
+        
+        if (esHoraDeReserva) {
+          console.log('⏰ Es hora de enviar reserva a cocina:', reserva.customer_name, 'a las', reserva.reservation_time)
+          
+          // Convertir reserva a formato de pedido
+          const pedido = {
+            id: `reservation_${reserva.id}`,
+            reservation_id: reserva.id,
+            table_id: reserva.table_id,
+            waiter_id: reserva.created_by,
+            total: reserva.reservation_items.reduce((sum, item) => sum + (item.subtotal || 0), 0),
+            tables: reserva.tables,
+            profiles: reserva.profiles,
+            order_items: reserva.reservation_items,
+            customer_name: reserva.customer_name,
+            reservation_time: reserva.reservation_time
+          }
+
+          // Enviar a cocina automáticamente
+          await enviarReservaACocinaAutomatico(pedido)
+        }
+      }
+    } catch (error) {
+      console.error('Error al verificar reservas:', error)
+    }
+  }
+
+  // Enviar reserva a cocina automáticamente (sin confirmación)
+  async function enviarReservaACocinaAutomatico(pedido) {
+    try {
+      // Verificar si ya existe una orden para esta reserva
+      const { data: ordenExistente } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('table_id', pedido.table_id)
+        .eq('status', 'cooking')
+        .limit(1)
+        .single()
+
+      if (ordenExistente) {
+        console.log('✅ La reserva ya fue enviada a cocina')
+        return
+      }
+
+      // Crear orden normal desde la reserva
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert([{
+          table_id: pedido.table_id,
+          waiter_id: pedido.waiter_id,
+          status: 'cooking', // Directamente a cocina
+          subtotal: pedido.total,
+          tax: pedido.total * 0.12,
+          total: pedido.total * 1.12,
+          notes: `Reserva ${pedido.reservation_time?.substring(0, 5)} - ${pedido.customer_name || ''}`
+        }])
+        .select()
+        .single()
+
+      if (orderError) throw orderError
+
+      // Insertar items de la reserva en la orden
+      if (pedido.order_items && pedido.order_items.length > 0) {
+        const orderItemsToInsert = pedido.order_items.map(item => ({
+          order_id: orderData.id,
+          product_id: item.product_id,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit_price: item.price,
+          subtotal: item.subtotal,
+          notes: item.notes,
+          status: 'cooking'
+        }))
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItemsToInsert)
+
+        if (itemsError) throw itemsError
+      }
+
+      // Actualizar reserva a "seated"
+      await supabase
+        .from('reservations')
+        .update({ status: 'seated' })
+        .eq('id', pedido.reservation_id)
+
+      // Actualizar mesa a ocupada
+      await supabase
+        .from('tables')
+        .update({ status: 'occupied' })
+        .eq('id', pedido.table_id)
+
+      console.log('✅ Reserva enviada a cocina automáticamente:', pedido.customer_name)
+      toast.success(`🔔 Reserva de ${pedido.customer_name} enviada a cocina automáticamente`)
+      
+      // Recargar pedidos
+      await fetchPedidos()
+    } catch (error) {
+      console.error('Error al enviar reserva automática:', error)
     }
   }
 
@@ -557,11 +907,15 @@ function Pedidos() {
       {pedidosFiltrados.length > 0 ? (
         <div style={{display:'grid',gap:'1rem'}}>
           {pedidosFiltrados.map((pedido) => {
-            const estadoConfig = ESTADOS_CONFIG[pedido.status] || ESTADOS_CONFIG[PEDIDOS_ESTADOS.PENDING]
+            const esReserva = pedido.is_reservation || false
+            const estadoConfig = ESTADOS_CONFIG[pedido.status] || ESTADOS_CONFIG[PEDIDOS_ESTADOS.RESERVATION]
             const EstadoIcon = estadoConfig.icon
-            
+
+            // Verificar si ya es la hora de la reserva (para reservas)
+            const esHoraDeReserva = esReserva ? verificarSiEsHoraDeReserva(pedido.reservation_date, pedido.reservation_time) : false
+
             return (
-              <div 
+              <div
                 key={pedido.id}
                 className="card"
                 style={{
@@ -589,7 +943,7 @@ function Pedidos() {
                         <span style={{fontWeight:700,fontSize:'1rem'}}>
                           Mesa {pedido.tables?.name || 'N/A'}
                         </span>
-                        <span className={`badge ${estadoConfig.bg.replace('#', 'badge-')}`} style={{
+                        <span className={`badge`} style={{
                           background: estadoConfig.bg,
                           color: estadoConfig.color,
                           fontSize:'0.65rem',
@@ -597,13 +951,42 @@ function Pedidos() {
                         }}>
                           {estadoConfig.label}
                         </span>
+                        {esReserva && (
+                          <span className="badge" style={{
+                            background: '#fef3c7',
+                            color: '#92400e',
+                            fontSize:'0.65rem',
+                            fontWeight:600
+                          }}>
+                            📅 Reserva
+                          </span>
+                        )}
                       </div>
                       <div style={{fontSize:'0.75rem',color:'var(--text-secondary)'}}>
-                        #{pedido.id} • {new Date(pedido.created_at).toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'})}
-                        {pedido.items?.length > 0 && ` • ${pedido.items.length} items`}
+                        {esReserva ? (
+                          <>
+                            #{pedido.reservation_id?.slice(0, 8) || 'N/A'} • 
+                            🕐 {pedido.reservation_time?.substring(0, 5) || 'N/A'}
+                            {esHoraDeReserva && (
+                              <span style={{marginLeft:'0.5rem',color:'#22c55e',fontWeight:600}}>
+                                ✅ Lista para enviar
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            #{pedido.id?.slice(0, 8)} • {new Date(pedido.created_at).toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'})}
+                            {pedido.order_items?.length > 0 && ` • ${pedido.order_items.length} items`}
+                          </>
+                        )}
                         {pedido.profiles?.full_name && (
                           <span style={{marginLeft:'0.5rem',color:'#64748b'}}>
                             👤 {pedido.profiles.full_name}
+                          </span>
+                        )}
+                        {esReserva && pedido.customer_name && (
+                          <span style={{marginLeft:'0.5rem',color:'#64748b'}}>
+                            🎉 {pedido.customer_name}
                           </span>
                         )}
                       </div>
@@ -615,79 +998,92 @@ function Pedidos() {
                     <div style={{fontWeight:700,fontSize:'1.25rem',color:'var(--primary)'}}>
                       ${parseFloat(pedido.total || 0).toFixed(2)}
                     </div>
-                    {pedido.notes && (
-                      <div style={{fontSize:'0.7rem',color:'var(--text-secondary)',maxWidth:'150px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                        📝 {pedido.notes}
-                      </div>
-                    )}
                   </div>
 
                   {/* Acciones */}
-                  <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
-                    {/* Botón Editar - Solo visible para pedidos en estado pendiente o cocina */}
-                    {(pedido.status === PEDIDOS_ESTADOS.PENDING || pedido.status === PEDIDOS_ESTADOS.COOKING) && (
-                      <button
-                        className="btn btn-outline btn-sm"
-                        onClick={() => openEditModal(pedido)}
-                        style={{padding:'0.5rem 0.75rem',fontSize:'0.75rem'}}
-                        title="Editar pedido"
-                      >
-                        ✏️ Editar
-                      </button>
+                  <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap',alignItems:'center'}}>
+                    {/* Reservas: Mensaje de estado automático */}
+                    {esReserva && (
+                      esHoraDeReserva ? (
+                        <span style={{fontSize:'0.7rem',color:'#22c55e',fontStyle:'italic',alignSelf:'center',fontWeight:600}}>
+                          ✅ Enviando a cocina automáticamente...
+                        </span>
+                      ) : (
+                        <span style={{fontSize:'0.7rem',color:'var(--text-secondary)',fontStyle:'italic',alignSelf:'center'}}>
+                          ⏳ Se enviará automáticamente a la hora programada
+                        </span>
+                      )
                     )}
-                    
-                    {/* Mensaje para pedidos no editables */}
-                    {(pedido.status === PEDIDOS_ESTADOS.READY || pedido.status === PEDIDOS_ESTADOS.SERVED || pedido.status === PEDIDOS_ESTADOS.PAID) && (
-                      <span style={{fontSize:'0.7rem',color:'var(--text-secondary)',fontStyle:'italic',alignSelf:'center'}}>
-                        🔒 No editable
-                      </span>
-                    )}
-                    
-                    {pedido.status !== PEDIDOS_ESTADOS.PAID && (
+
+                    {/* Pedidos normales: Botones habituales */}
+                    {!esReserva && (
                       <>
-                        <button
-                          className="btn btn-outline btn-sm"
-                          onClick={() => cambiarEstado(pedido.id, getPreviousState(pedido.status))}
-                          disabled={pedido.status === PEDIDOS_ESTADOS.PENDING}
-                          style={{padding:'0.5rem',minWidth:'36px'}}
-                          title="Estado anterior"
-                        >
-                          ←
-                        </button>
-                        {pedido.status === PEDIDOS_ESTADOS.SERVED ? (
+                        {/* Botón Editar - Solo visible para pedidos en estado pendiente o cocina */}
+                        {(pedido.status === PEDIDOS_ESTADOS.PENDING || pedido.status === PEDIDOS_ESTADOS.COOKING) && (
                           <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => {
-                              // Redirigir a Caja para procesar el pago
-                              window.location.href = `/caja?orderId=${pedido.id}&tableId=${pedido.table_id}`
-                            }}
-                            style={{padding:'0.5rem 1rem',fontSize:'0.8rem'}}
+                            className="btn btn-outline btn-sm"
+                            onClick={() => openEditModal(pedido)}
+                            style={{padding:'0.5rem 0.75rem',fontSize:'0.75rem'}}
+                            title="Editar pedido"
                           >
-                            💵 Cobrar
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() => cambiarEstado(pedido.id, getNextState(pedido.status))}
-                            style={{padding:'0.5rem 1rem',fontSize:'0.8rem'}}
-                          >
-                            {pedido.status === PEDIDOS_ESTADOS.PENDING && '→ Cocina'}
-                            {pedido.status === PEDIDOS_ESTADOS.COOKING && '→ Listo'}
-                            {pedido.status === PEDIDOS_ESTADOS.READY && '→ Servir'}
+                            ✏️ Editar
                           </button>
                         )}
+
+                        {/* Botón Cancelar */}
+                        {(pedido.status !== PEDIDOS_ESTADOS.PAID && pedido.status !== PEDIDOS_ESTADOS.CANCELLED) && (
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => cancelarPedido(pedido)}
+                            style={{padding:'0.5rem 0.75rem',fontSize:'0.75rem'}}
+                            title="Cancelar pedido"
+                          >
+                            🗑️ Cancelar
+                          </button>
+                        )}
+
+                        {/* Botones de estado */}
+                        {pedido.status !== PEDIDOS_ESTADOS.PAID && pedido.status !== PEDIDOS_ESTADOS.CANCELLED && (
+                          <>
+                            <button
+                              className="btn btn-outline btn-sm"
+                              onClick={() => cambiarEstado(pedido.id, getPreviousState(pedido.status))}
+                              disabled={pedido.status === PEDIDOS_ESTADOS.PENDING}
+                              style={{padding:'0.5rem',minWidth:'36px'}}
+                              title="Estado anterior"
+                            >
+                              ←
+                            </button>
+                            {pedido.status === PEDIDOS_ESTADOS.SERVED ? (
+                              <button
+                                className="btn btn-success btn-sm"
+                                onClick={() => {
+                                  window.location.href = `/caja?orderId=${pedido.id}&tableId=${pedido.table_id}`
+                                }}
+                                style={{padding:'0.5rem 1rem',fontSize:'0.8rem'}}
+                              >
+                                💵 Cobrar
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => cambiarEstado(pedido.id, getNextState(pedido.status))}
+                                style={{padding:'0.5rem 1rem',fontSize:'0.8rem'}}
+                              >
+                                {pedido.status === PEDIDOS_ESTADOS.PENDING && '→ Cocina'}
+                                {pedido.status === PEDIDOS_ESTADOS.COOKING && '→ Listo'}
+                                {pedido.status === PEDIDOS_ESTADOS.READY && '→ Servir'}
+                              </button>
+                            )}
+                          </>
+                        )}
                       </>
-                    )}
-                    {pedido.status === PEDIDOS_ESTADOS.PAID && (
-                      <span className="badge badge-success" style={{fontSize:'0.75rem'}}>
-                        ✓ Completado
-                      </span>
                     )}
                   </div>
                 </div>
 
                 {/* Items del pedido (expandible) */}
-                {pedidoSeleccionado === pedido.id && pedido.items && (
+                {pedidoSeleccionado === pedido.id && pedido.order_items && (
                   <div style={{
                     marginTop:'1rem',
                     paddingTop:'1rem',
@@ -695,19 +1091,19 @@ function Pedidos() {
                     display:'grid',
                     gap:'0.5rem'
                   }}>
-                    {pedido.items.map((item, idx) => (
+                    {pedido.order_items.map((item, idx) => (
                       <div key={idx} style={{display:'flex',justifyContent:'space-between',fontSize:'0.875rem'}}>
                         <span>
                           <span style={{fontWeight:600,color:'var(--primary)'}}>{item.quantity}x</span>
                           {' '}{item.product_name}
-                          {item.special_instructions && (
+                          {item.notes && (
                             <span style={{fontSize:'0.75rem',color:'var(--text-secondary)',display:'block'}}>
-                              📝 {item.special_instructions}
+                              📝 {item.notes}
                             </span>
                           )}
                         </span>
                         <span style={{color:'var(--text-secondary)'}}>
-                          ${(item.price * item.quantity).toFixed(2)}
+                          ${parseFloat(item.subtotal || 0).toFixed(2)}
                         </span>
                       </div>
                     ))}

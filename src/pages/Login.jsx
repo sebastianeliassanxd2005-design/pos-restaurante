@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useRestaurant } from '../context/RestaurantContext'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, AlertTriangle, Clock } from 'lucide-react'
 
@@ -10,6 +11,7 @@ function Login() {
   const [lockoutInfo, setLockoutInfo] = useState(null)
 
   const { signIn } = useAuth()
+  const { name, logo, primaryColor } = useRestaurant()
   const navigate = useNavigate()
   
   // Verificar bloqueo al cargar la página
@@ -79,9 +81,29 @@ function Login() {
       <div className="login-card">
         <div className="login-header">
           <div className="logo">
-            <img src="/logo-large.svg" alt="POS Restaurante Logo" style={{width:120,height:120}} />
+            <div style={{
+              width: 120,
+              height: 120,
+              background: 'white',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '10px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}>
+              <img
+                src={logo || '/logo-large.svg'}
+                alt={`${name} Logo`}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
           </div>
-          <h1>POS Restaurante</h1>
+          <h1 style={{color: primaryColor}}>{name || 'POS Restaurante'}</h1>
           <p>Sistema de Punto de Venta</p>
         </div>
 

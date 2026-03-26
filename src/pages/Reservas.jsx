@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { Calendar, Clock, Users, Phone, Mail, CheckCircle, XCircle, Search, Filter, Edit, Bell, Plus, Minus, ShoppingBag } from 'lucide-react'
+import { Calendar, Clock, Users, Phone, Mail, CheckCircle, XCircle, Search, Filter, Edit, Plus, Minus, ShoppingBag, Bell } from 'lucide-react'
 
 function Reservas() {
   const [reservas, setReservas] = useState([])
@@ -34,10 +34,14 @@ function Reservas() {
     notes: '',
     table_id: ''
   })
-  
-  // Obtener fecha mínima (hoy) para el input de fecha
-  const minDate = new Date().toISOString().split('T')[0]
-  
+
+  // Obtener fecha mínima (hoy) para el input de fecha - usando fecha local explícita
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0') // getMonth() es 0-indexado
+  const day = String(today.getDate()).padStart(2, '0')
+  const minDate = `${year}-${month}-${day}` // Formato YYYY-MM-DD explícito
+
   // Estados para pre-orden
   const [showPreOrder, setShowPreOrder] = useState(false)
   const [preOrderItems, setPreOrderItems] = useState([])
@@ -46,54 +50,62 @@ function Reservas() {
   const [preOrderQuantity, setPreOrderQuantity] = useState(1)
   const [preOrderNotes, setPreOrderNotes] = useState('')
   const [tables, setTables] = useState([])
-  
-  // Estados para recordatorios automáticos
-  const [upcomingReservations, setUpcomingReservations] = useState([])
-  const [showReminderNotification, setShowReminderNotification] = useState(false)
-  
-  // Cargar configuración desde localStorage o usar valores por defecto
-  const [reminderSettings, setReminderSettings] = useState(() => {
-    const saved = localStorage.getItem('reminderSettings')
-    return saved ? JSON.parse(saved) : {
-      enabled: true,
-      minutesBefore: 60, // Recordar 1 hora antes
-      autoRefresh: true
-    }
-  })
-  
-  // Guardar configuración en localStorage cada vez que cambie
-  useEffect(() => {
-    localStorage.setItem('reminderSettings', JSON.stringify(reminderSettings))
-  }, [reminderSettings])
+
+  // Estados para alarma de reservas
+  const [showAlarmModal, setShowAlarmModal] = useState(false)
+  const [currentAlarmReservation, setCurrentAlarmReservation] = useState(null)
+  const audioRef = useRef(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const alarmIntervalRef = useRef(null)
+
   const { profile } = useAuth()
   const toast = useToast()
+
+  // Limpiar alarmas atendidas (al cargar la página)
+  function clearHandledAlarms() {
+    const now = new Date()
+    const hoy = now.toLocaleDateString('en-CA')
+    const keysToRemove = []
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('alarm_handled_')) {
+        // Extraer fecha de la clave
+        const parts = key.split('_')
+        if (parts.length >= 4) {
+          const fecha = parts[2] // YYYY-MM-DD
+          if (fecha < hoy) {
+            keysToRemove.push(key)
+          }
+        }
+      }
+    }
+    
+    keysToRemove.forEach(key => localStorage.removeItem(key))
+  }
 
   useEffect(() => {
     fetchReservas()
     fetchTables()
+    clearHandledAlarms() // Limpiar alarmas antiguas al cargar
   }, [filterStatus, filterDate])
 
-  // Verificar recordatorios automáticos cada minuto
+  // Verificar alarmas de reservas cada minuto
   useEffect(() => {
-    if (!reminderSettings.enabled) return
+    checkAlarmReservations()
 
-    checkUpcomingReservations()
-    
     const interval = setInterval(() => {
-      checkUpcomingReservations()
+      checkAlarmReservations()
     }, 60000) // Cada minuto
 
     return () => clearInterval(interval)
-  }, [reminderSettings.enabled, reminderSettings.minutesBefore])
+  }, [])
 
-  // Verificar reservas próximas
-  async function checkUpcomingReservations() {
+  // Verificar reservas que son exactamente ahora para activar alarma
+  async function checkAlarmReservations() {
     try {
       const ahora = new Date()
-      // Obtener fecha local en formato YYYY-MM-DD
       const hoy = ahora.toLocaleDateString('en-CA')
-
-      console.log('🔔 Verificando recordatorios - Fecha:', hoy, 'Hora:', ahora.toLocaleTimeString())
 
       // Obtener reservas de hoy confirmadas o sentadas
       const { data: reservasHoy, error } = await supabase
@@ -112,147 +124,125 @@ function Reservas() {
       }
 
       if (!reservasHoy || reservasHoy.length === 0) {
-        console.log('No hay reservas para hoy')
         return
       }
 
-      console.log('📅 Reservas encontradas:', reservasHoy.length)
-
-      // Filtrar reservas que están por cumplirse
-      const proximas = reservasHoy.filter(reserva => {
-        // Crear fecha de la reserva en hora local
+      // Filtrar reservas que son EXACTAMENTE ahora (entre -1 y 1 minuto)
+      const ahoraMismo = reservasHoy.filter(reserva => {
         const [year, month, day] = String(reserva.reservation_date).split('-')
-        const timeString = String(reserva.reservation_time).substring(0, 5) // "14:00:00" → "14:00"
+        const timeString = String(reserva.reservation_time).substring(0, 5)
         const [hours, minutes] = timeString.split(':')
-        
+
         const reservaDateTime = new Date(
-          parseInt(year), 
-          parseInt(month) - 1, 
-          parseInt(day), 
-          parseInt(hours), 
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
           parseInt(minutes)
         )
 
         const diffMs = reservaDateTime - ahora
         const diffMinutes = Math.floor(diffMs / 60000)
 
-        console.log(`🕐 Reserva: ${reserva.customer_name}, Hora: ${timeString}, Faltan: ${diffMinutes} min`)
-
-        // Si falta entre 0 y minutesBefore minutos
-        return diffMinutes >= 0 && diffMinutes <= reminderSettings.minutesBefore
+        return diffMinutes >= -1 && diffMinutes <= 1
       })
 
-      console.log('🔔 Reservas próximas:', proximas.length)
-
-      if (proximas.length > 0) {
-        setUpcomingReservations(proximas)
-        setShowReminderNotification(true)
-
-        // Sonar notificación
-        playNotificationSound()
-
-        console.log('✅ Notificación mostrada para:', proximas.map(p => p.customer_name).join(', '))
+      // Activar alarma para reservas que son ahora
+      if (ahoraMismo.length > 0) {
+        ahoraMismo.forEach(reserva => {
+          triggerAlarm(reserva)
+        })
       }
     } catch (error) {
-      console.error('Error checking upcoming reservations:', error)
+      console.error('Error checking alarm reservations:', error)
     }
   }
 
-  // Sonido de notificación
-  function playNotificationSound() {
-    // Usar Audio API del navegador
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
+  // Sonido de alarma (más elaborado y agradable) - se repite continuamente
+  function playAlarmSound() {
+    stopAlarmSound() // Detener cualquier alarma previa
 
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
+    // Reproducir inmediatamente
+    _playAlarmTone()
 
-    oscillator.frequency.value = 800
-    oscillator.type = 'sine'
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+    // Repetir cada 2 segundos
+    alarmIntervalRef.current = setInterval(() => {
+      _playAlarmTone()
+    }, 2000)
 
-    oscillator.start(audioContext.currentTime)
-    oscillator.stop(audioContext.currentTime + 0.5)
+    setIsPlaying(true)
+  }
+  
+  // Tono individual de alarma
+  function _playAlarmTone() {
+    if (audioRef.current) {
+      audioRef.current.play().catch(err => {
+        console.error('Error al reproducir alarma:', err)
+      })
+    } else {
+      // Fallback: usar Audio API con melodía más elaborada
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      
+      // Crear melodía agradable (arpegio ascendente)
+      const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25] // C-E-G-C-G-E
+      const duration = 0.2
+      
+      notes.forEach((freq, index) => {
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+        
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+        
+        oscillator.frequency.value = freq
+        oscillator.type = 'sine'
+        
+        const startTime = audioContext.currentTime + (index * duration)
+        gainNode.gain.setValueAtTime(0.3, startTime)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration)
+        
+        oscillator.start(startTime)
+        oscillator.stop(startTime + duration)
+      })
+    }
   }
 
-  // Enviar recordatorio automático
-  async function sendAutoReminder(reserva) {
-    if (!reserva.customer_phone) {
-      toast.warning('La reserva no tiene número de teléfono')
+  // Detener alarma
+  function stopAlarmSound() {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current)
+      alarmIntervalRef.current = null
+    }
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+    setIsPlaying(false)
+  }
+
+  // Activar alarma para reserva específica
+  function triggerAlarm(reserva) {
+    // Verificar si la alarma ya fue atendida (está en localStorage)
+    const alarmKey = `alarm_handled_${reserva.id}_${reserva.reservation_date}_${String(reserva.reservation_time).substring(0, 5)}`
+    const alreadyHandled = localStorage.getItem(alarmKey)
+    
+    if (alreadyHandled === 'true') {
+      console.log('✅ Alarma ya atendida para:', reserva.customer_name)
       return
     }
 
-    // Verificar si hay configuración de WhatsApp API
-    const whatsappConfig = JSON.parse(localStorage.getItem('whatsappConfig') || '{}')
-    
-    const fecha = reserva.reservation_date  // Usar fecha directa sin conversión
+    setCurrentAlarmReservation(reserva)
+    setShowAlarmModal(true)
+    playAlarmSound()
 
-    const hora = String(reserva.reservation_time).substring(0, 5)
-
-    const mensaje = `Hola ${reserva.customer_name}!
-
-Te recordamos tu reserva en nuestro restaurante:
-
-Fecha: ${fecha}
-Hora: ${hora}
-Personas: ${reserva.party_size}
-Mesa: ${reserva.tables?.name || 'Confirmada'}
-
-¡Te esperamos!
-
-Responde SI para confirmar o NO para cancelar.`
-
-    // Si hay configuración de WhatsApp API, enviar automáticamente
-    if (whatsappConfig.accessToken && whatsappConfig.phoneNumberId) {
-      try {
-        const response = await fetch(
-          `https://graph.facebook.com/v17.0/${whatsappConfig.phoneNumberId}/messages`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${whatsappConfig.accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              to: reserva.customer_phone.replace(/[^0-9]/g, ''),
-              type: 'text',
-              text: { body: mensaje }
-            })
-          }
-        )
-
-        const result = await response.json()
-
-        if (result.messages && result.messages.length > 0) {
-          toast.success(`✅ WhatsApp enviado a ${reserva.customer_name}`)
-          return
-        }
-      } catch (error) {
-        console.error('Error sending WhatsApp:', error)
-      }
-    }
-
-    // Si no hay API o falla, abrir WhatsApp Web manualmente
-    const mensajeEncoded = encodeURIComponent(mensaje)
-    const phone = reserva.customer_phone.replace(/[^0-9]/g, '')
-    const url = `https://wa.me/${phone}?text=${mensajeEncoded}`
-    window.open(url, '_blank')
-    toast.success(`Abriendo WhatsApp para ${reserva.customer_name}`)
+    // Mostrar toast de alarma
+    toast.warning(`🔔 Alarma: Reserva de ${reserva.customer_name} a las ${String(reserva.reservation_time).substring(0, 5)}`)
   }
 
-  // Enviar todos los recordatorios
-  function sendAllReminders() {
-    upcomingReservations.forEach((reserva, index) => {
-      setTimeout(() => {
-        sendAutoReminder(reserva)
-      }, index * 1000) // 1 segundo entre cada uno
-    })
-    
-    setShowReminderNotification(false)
-    setUpcomingReservations([])
+  // Marcar alarma como atendida
+  function markAlarmAsHandled(reserva) {
+    const alarmKey = `alarm_handled_${reserva.id}_${reserva.reservation_date}_${String(reserva.reservation_time).substring(0, 5)}`
+    localStorage.setItem(alarmKey, 'true')
   }
 
   // Cargar mesas disponibles
@@ -272,11 +262,19 @@ Responde SI para confirmar o NO para cancelar.`
   // Cargar productos para pre-orden
   async function fetchProducts() {
     try {
-      const { data } = await supabase
+      console.log('🛒 Cargando productos para pre-orden...')
+      const { data, error } = await supabase
         .from('products')
         .select('*, categories(name)')
         .eq('available', true)
         .order('name')
+      
+      if (error) {
+        console.error('❌ Error al cargar productos:', error)
+      } else {
+        console.log('✅ Productos cargados:', data?.length || 0)
+      }
+      
       setProducts(data || [])
     } catch (error) {
       console.error('Error loading products:', error)
@@ -360,8 +358,19 @@ Responde SI para confirmar o NO para cancelar.`
 
   // Agregar producto a pre-orden
   function addProductToPreOrder() {
+    console.log('📝 Agregar producto a pre-orden:', { 
+      selectedProduct, 
+      productsLoaded: products.length > 0 
+    })
+    
     if (!selectedProduct) {
       toast.warning('Selecciona un producto')
+      return
+    }
+    
+    if (!selectedProduct.id || !selectedProduct.name || !selectedProduct.price) {
+      console.error('❌ Producto inválido:', selectedProduct)
+      toast.error('Producto inválido. Intenta nuevamente.')
       return
     }
 
@@ -371,9 +380,10 @@ Responde SI para confirmar o NO para cancelar.`
       quantity: preOrderQuantity,
       price: selectedProduct.price,
       subtotal: selectedProduct.price * preOrderQuantity,
-      notes: preOrderNotes
+      notes: preOrderNotes || ''
     }
 
+    console.log('✅ Agregando item:', newItem)
     setPreOrderItems(prev => [...prev, newItem])
     setSelectedProduct(null)
     setPreOrderQuantity(1)
@@ -578,75 +588,6 @@ Responde SI para confirmar o NO para cancelar.`
     }
   }
 
-  function sendReminder(reserva) {
-    if (!reserva.customer_phone) {
-      toast.warning('La reserva no tiene número de teléfono')
-      return
-    }
-
-    const fecha = reserva.reservation_date  // Usar fecha directa sin conversión UTC
-    const hora = String(reserva.reservation_time).substring(0, 5)
-
-    // Usar emojis compatibles con URL
-    const mensaje = `Hola ${reserva.customer_name}!
-
-Te recordamos que tienes una reserva en nuestro restaurante:
-Fecha: ${fecha}
-Hora: ${hora}
-Personas: ${reserva.party_size}
-Mesa: ${reserva.tables?.name || 'Confirmada'}
-
-Te esperamos!
-
-Si necesitas cancelar o modificar, por favor avisanos.`
-
-    // Limpiar número de teléfono (solo dígitos)
-    let phone = reserva.customer_phone.replace(/[^0-9]/g, '')
-    
-    // Si el número no tiene código de país, agregar uno por defecto
-    if (phone.length <= 10) {
-      const CODIGO_PAIS = '593'
-      phone = CODIGO_PAIS + phone
-    }
-    
-    // Codificar mensaje para URL correctamente
-    const mensajeEncoded = encodeURIComponent(mensaje)
-    
-    // Abrir WhatsApp
-    const url = `https://wa.me/${phone}?text=${mensajeEncoded}`
-    window.open(url, '_blank')
-    
-    toast.success('Abriendo WhatsApp...')
-  }
-
-  function sendEmailReminder(reserva) {
-    if (!reserva.customer_email) {
-      toast.warning('La reserva no tiene correo electrónico')
-      return
-    }
-
-    const fecha = reserva.reservation_date  // Usar fecha directa sin conversión UTC
-    const subject = encodeURIComponent(`Recordatorio de Reserva - ${fecha}`)
-    const body = encodeURIComponent(`Hola ${reserva.customer_name},
-
-Te recordamos que tienes una reserva en nuestro restaurante:
-
-Fecha: ${fecha}
-Hora: ${reserva.reservation_time}
-👥 Personas: ${reserva.party_size}
-🪑 Mesa: ${reserva.tables?.name || 'Confirmada'}
-
-¡Te esperamos!
-
-Si necesitas cancelar o modificar, por favor avísanos.
-
-Saludos,
-Equipo del Restaurante`)
-
-    window.open(`mailto:${reserva.customer_email}?subject=${subject}&body=${body}`)
-    toast.success('Abriendo cliente de correo...')
-  }
-
   const getStatusBadge = (status) => {
     const badges = {
       'confirmed': 'badge-success',
@@ -691,116 +632,9 @@ Equipo del Restaurante`)
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button 
-            className="btn btn-outline" 
-            onClick={() => setReminderSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
-            title="Activar/desactivar recordatorios automáticos"
-          >
-            🔔 {reminderSettings.enabled ? 'ON' : 'OFF'}
-          </button>
           <button className="btn btn-primary" onClick={openNewReservationModal}>
             <Plus size={20} /> Nueva Reserva
           </button>
-        </div>
-      </div>
-
-      {/* Notificación de recordatorios */}
-      {showReminderNotification && upcomingReservations.length > 0 && (
-        <div className="card" style={{ 
-          marginBottom: '1.5rem', 
-          border: '2px solid var(--warning)',
-          background: 'var(--warning-light)',
-          animation: 'pulse 2s infinite'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ margin: 0, color: 'var(--warning)' }}>
-                🔔 {upcomingReservations.length} Reserva(s) Próxima(s)
-              </h3>
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem' }}>
-                Las siguientes reservas están por cumplirse en los próximos {reminderSettings.minutesBefore} minutos:
-              </p>
-              <div style={{ marginTop: '0.75rem' }}>
-                {upcomingReservations.map(reserva => (
-                  <div key={reserva.id} style={{ 
-                    background: 'var(--surface)', 
-                    padding: '0.75rem', 
-                    borderRadius: '0.5rem',
-                    marginBottom: '0.5rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div>
-                      <strong>{reserva.customer_name}</strong>
-                      <span style={{ marginLeft: '0.75rem', color: 'var(--text-secondary)' }}>
-                        🕐 {reserva.reservation_time.substring(0, 5)} - {reserva.tables?.name}
-                      </span>
-                    </div>
-                    <button
-                      className="btn btn-success btn-sm"
-                      onClick={() => sendAutoReminder(reserva)}
-                    >
-                      📱 Enviar Recordatorio
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                className="btn btn-outline"
-                onClick={() => setShowReminderNotification(false)}
-              >
-                Cerrar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={sendAllReminders}
-              >
-                📱 Enviar Todos
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Configuración de recordatorios */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h4 style={{ margin: 0 }}>⚙️ Recordatorios Automáticos</h4>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>
-              El sistema verificará automáticamente las reservas próximas y te notificará
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div>
-              <label style={{ fontSize: '0.75rem', display: 'block', marginBottom: '0.25rem' }}>
-                Minutos antes:
-              </label>
-              <select
-                className="form-control"
-                style={{ width: 'auto', padding: '0.5rem' }}
-                value={reminderSettings.minutesBefore}
-                onChange={(e) => setReminderSettings(prev => ({ ...prev, minutesBefore: parseInt(e.target.value) }))}
-              >
-                <option value="15">15 minutos</option>
-                <option value="30">30 minutos</option>
-                <option value="60">1 hora</option>
-                <option value="120">2 horas</option>
-                <option value="180">3 horas</option>
-              </select>
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={reminderSettings.enabled}
-                onChange={(e) => setReminderSettings(prev => ({ ...prev, enabled: e.target.checked }))}
-              />
-              <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Activados</span>
-            </label>
-          </div>
         </div>
       </div>
 
@@ -891,41 +725,8 @@ Equipo del Restaurante`)
                   </span>
                 </div>
 
-                {/* Botón de WhatsApp */}
-                <button
-                  className="btn"
-                  style={{ 
-                    width: '100%',
-                    background: '#25D366',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    padding: '0.75rem',
-                    marginBottom: '1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem'
-                  }}
-                  onClick={() => sendReminder(reserva)}
-                  title="Enviar recordatorio por WhatsApp"
-                >
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/>
-                  </svg>
-                  Enviar Recordatorio
-                </button>
-
-                {/* Otros botones */}
+                {/* Botones de acción */}
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <button
-                    className="btn btn-outline"
-                    style={{ flex: 1 }}
-                    onClick={() => sendEmailReminder(reserva)}
-                    title="Enviar recordatorio por Email"
-                  >
-                    <Bell size={18} style={{ marginRight: '0.5rem' }} /> Email
-                  </button>
                   <button
                     className="btn btn-outline"
                     style={{ flex: 1 }}
@@ -933,6 +734,14 @@ Equipo del Restaurante`)
                     title="Editar reserva"
                   >
                     <Edit size={18} style={{ marginRight: '0.5rem' }} /> Editar
+                  </button>
+                  <button
+                    className="btn btn-outline"
+                    style={{ flex: 1 }}
+                    onClick={() => deleteReservation(reserva.id)}
+                    title="Eliminar reserva"
+                  >
+                    <XCircle size={18} style={{ marginRight: '0.5rem' }} /> Eliminar
                   </button>
                 </div>
 
@@ -1195,14 +1004,59 @@ Equipo del Restaurante`)
                     </div>
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label>Cantidad</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        value={preOrderQuantity}
-                        onChange={(e) => setPreOrderQuantity(parseInt(e.target.value) || 1)}
-                        min="1"
-                        max="20"
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => setPreOrderQuantity(Math.max(preOrderQuantity - 1, 1))}
+                          disabled={preOrderQuantity === 1}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: preOrderQuantity === 1 ? 0.5 : 1,
+                            cursor: preOrderQuantity === 1 ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          <Minus size={18} />
+                        </button>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={preOrderQuantity}
+                          onChange={(e) => setPreOrderQuantity(parseInt(e.target.value) || 1)}
+                          min="1"
+                          max="20"
+                          style={{ 
+                            width: '80px', 
+                            textAlign: 'center',
+                            fontWeight: 600,
+                            fontSize: '1rem'
+                          }}
+                          readOnly
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => setPreOrderQuantity(Math.min(preOrderQuantity + 1, 20))}
+                          disabled={preOrderQuantity >= 20}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: preOrderQuantity >= 20 ? 0.5 : 1,
+                            cursor: preOrderQuantity >= 20 ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          <Plus size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="form-group">
@@ -1436,14 +1290,59 @@ Equipo del Restaurante`)
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label>Cantidad</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={preOrderQuantity}
-                          onChange={(e) => setPreOrderQuantity(parseInt(e.target.value) || 1)}
-                          min="1"
-                          max="20"
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => setPreOrderQuantity(Math.max(preOrderQuantity - 1, 1))}
+                            disabled={preOrderQuantity === 1}
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: preOrderQuantity === 1 ? 0.5 : 1,
+                              cursor: preOrderQuantity === 1 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <Minus size={18} />
+                          </button>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={preOrderQuantity}
+                            onChange={(e) => setPreOrderQuantity(parseInt(e.target.value) || 1)}
+                            min="1"
+                            max="20"
+                            style={{ 
+                              width: '80px', 
+                              textAlign: 'center',
+                              fontWeight: 600,
+                              fontSize: '1rem'
+                            }}
+                            readOnly
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => setPreOrderQuantity(Math.min(preOrderQuantity + 1, 20))}
+                            disabled={preOrderQuantity >= 20}
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: preOrderQuantity >= 20 ? 0.5 : 1,
+                              cursor: preOrderQuantity >= 20 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <Plus size={18} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <div className="form-group">
@@ -1537,6 +1436,136 @@ Equipo del Restaurante`)
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Alarma de Reserva */}
+      {showAlarmModal && currentAlarmReservation && (
+        <div className="modal-overlay" onClick={() => { stopAlarmSound(); setShowAlarmModal(false); }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px', border: '3px solid #f59e0b' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              marginBottom: '1.5rem',
+              animation: 'pulse 1s infinite'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)'
+              }}>
+                <Bell size={40} style={{ color: 'white' }} />
+              </div>
+            </div>
+            
+            <h2 style={{ 
+              textAlign: 'center', 
+              fontSize: '1.5rem', 
+              fontWeight: 700,
+              color: '#f59e0b',
+              marginBottom: '0.5rem'
+            }}>
+              🔔 ¡Es la Hora!
+            </h2>
+            
+            <p style={{ 
+              textAlign: 'center', 
+              color: 'var(--text-secondary)',
+              fontSize: '0.925rem',
+              marginBottom: '1.5rem'
+            }}>
+              La reserva está por comenzar
+            </p>
+            
+            <div style={{
+              background: 'var(--background)',
+              padding: '1.25rem',
+              borderRadius: '0.75rem',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>👤 Cliente</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: 700 }}>{currentAlarmReservation.customer_name}</div>
+              </div>
+              
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr', 
+                gap: '1rem',
+                marginBottom: '0.75rem'
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>🕐 Hora</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 600 }}>{String(currentAlarmReservation.reservation_time).substring(0, 5)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>👥 Personas</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 600 }}>{currentAlarmReservation.party_size} personas</div>
+                </div>
+              </div>
+              
+              {currentAlarmReservation.tables && (
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>🪑 Mesa</div>
+                  <div style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: 600,
+                    padding: '0.5rem',
+                    background: 'var(--primary-light)',
+                    color: 'var(--primary)',
+                    borderRadius: '0.375rem',
+                    textAlign: 'center'
+                  }}>
+                    {currentAlarmReservation.tables?.name}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'center'
+            }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  if (currentAlarmReservation) {
+                    markAlarmAsHandled(currentAlarmReservation)
+                  }
+                  stopAlarmSound()
+                  setShowAlarmModal(false)
+                }}
+                style={{ flex: 1, padding: '0.875rem', fontWeight: 600 }}
+              >
+                {isPlaying ? '🔇 Detener Alarma' : 'Cerrar'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  if (currentAlarmReservation) {
+                    markAlarmAsHandled(currentAlarmReservation)
+                  }
+                  stopAlarmSound()
+                  setShowAlarmModal(false)
+                  if (currentAlarmReservation?.table_id) {
+                    window.location.href = `/pos?table=${currentAlarmReservation.table_id}`
+                  }
+                }}
+                style={{ flex: 1, padding: '0.875rem', fontWeight: 600 }}
+              >
+                🛒 Ir a Pedido
+              </button>
+            </div>
           </div>
         </div>
       )}

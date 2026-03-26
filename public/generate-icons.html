@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Íconos PWA</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #1a2744;
+      text-align: center;
+    }
+    .instructions {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .icon-item {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .icon-item canvas {
+      border: 1px solid #e0e0e0;
+      border-radius: 18px;
+    }
+    .icon-item p {
+      margin: 10px 0 5px;
+      font-weight: bold;
+      color: #1a2744;
+    }
+    .icon-item span {
+      font-size: 12px;
+      color: #666;
+    }
+    button {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #b91c1c;
+    }
+    .button-container {
+      text-align: center;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 Generador de Íconos PWA - POS Restaurante</h1>
+  
+  <div class="instructions">
+    <h2>Instrucciones:</h2>
+    <ol>
+      <li><strong>Espera a que carguen los íconos</strong> (puede tomar unos segundos)</li>
+      <li><strong>Click derecho en cada ícono</strong> → "Guardar imagen como..."</li>
+      <li><strong>Guarda con el nombre indicado</strong> (ej: icon-192.png, icon-512.png)</li>
+      <li><strong>Reemplaza los archivos</strong> en la carpeta <code>public/</code> de tu proyecto</li>
+    </ol>
+    <p><strong>O usa el botón de abajo</strong> para descargar todos los íconos en un ZIP (recomendado)</p>
+  </div>
+
+  <div class="button-container">
+    <button onclick="downloadAll()">📥 Descargar Todos los Íconos (ZIP)</button>
+    <button onclick="regenerateIcons()">🔄 Regenerar Íconos</button>
+  </div>
+
+  <div class="icon-grid" id="iconGrid"></div>
+
+  <!-- Script para generar íconos -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    const iconSizes = [
+      { size: 192, name: 'icon-192.png', purpose: 'PWA Android' },
+      { size: 512, name: 'icon-512.png', purpose: 'PWA Android' },
+      { size: 180, name: 'apple-touch-icon.png', purpose: 'iOS Safari' },
+      { size: 1024, name: 'icon-1024.png', purpose: 'App Store' }
+    ];
+
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      const scale = size / 1024;
+      
+      // Limpiar canvas
+      ctx.clearRect(0, 0, size, size);
+      
+      // Fondo azul marino oscuro con esquinas redondeadas
+      const radius = 226 * scale;
+      ctx.fillStyle = '#1a2744';
+      roundRect(ctx, 0, 0, size, size, radius);
+      ctx.fill();
+      
+      // Círculo blanco (70% del ícono)
+      const circleRadius = 358 * scale;
+      const centerX = size / 2;
+      const centerY = size / 2;
+      
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      
+      // Borde rojo delgado
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 8 * scale;
+      ctx.stroke();
+      
+      // Tenedor y cuchillo en rojo
+      drawForkAndKnife(ctx, centerX, centerY, scale);
+      
+      // Texto "POS"
+      ctx.font = `bold ${120 * scale}px Arial, Helvetica, sans-serif`;
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.letterSpacing = '8px';
+      ctx.fillText('POS', centerX, size * 0.84);
+    }
+    
+    function drawForkAndKnife(ctx, centerX, centerY, scale) {
+      ctx.fillStyle = '#dc2626';
+      
+      const forkX = centerX - 100 * scale;
+      const knifeX = centerX + 100 * scale;
+      const itemWidth = 50 * scale;
+      const totalHeight = 179 * scale;
+      const topY = centerY - totalHeight;
+      
+      // TENEDOR (izquierda)
+      // Dientes del tenedor (3 dientes)
+      const toothWidth = 18 * scale;
+      const toothHeight = 107 * scale;
+      const toothSpacing = 18 * scale;
+      
+      // Diente izquierdo
+      roundRect(ctx, forkX - 25 * scale, topY, toothWidth, toothHeight, 4 * scale);
+      ctx.fill();
+      
+      // Diente central
+      roundRect(ctx, forkX - 7 * scale, topY, toothWidth, toothHeight, 4 * scale);
+      ctx.fill();
+      
+      // Diente derecho
+      roundRect(ctx, forkX + 11 * scale, topY, toothWidth, toothHeight, 4 * scale);
+      ctx.fill();
+      
+      // Mango del tenedor
+      const handleY = topY + toothHeight;
+      const handleHeight = 143 * scale;
+      roundRect(ctx, forkX - 25 * scale, handleY, itemWidth, handleHeight, 8 * scale);
+      ctx.fill();
+      
+      // CUCHILLO (derecha)
+      // Hoja del cuchillo
+      const bladeHeight = 125 * scale;
+      roundRect(ctx, knifeX - 25 * scale, topY, itemWidth, bladeHeight, 4 * scale);
+      ctx.fill();
+      
+      // Mango del cuchillo
+      const knifeHandleY = topY + bladeHeight - 54 * scale;
+      const knifeHandleHeight = 125 * scale;
+      roundRect(ctx, knifeX - 25 * scale, knifeHandleY, itemWidth, knifeHandleHeight, 8 * scale);
+      ctx.fill();
+      
+      // Línea decorativa en el mango
+      ctx.fillStyle = '#b91c1c';
+      ctx.fillRect(knifeX - 25 * scale, knifeHandleY + 18 * scale, itemWidth, 8 * scale);
+    }
+    
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+    
+    function generateIcons() {
+      const grid = document.getElementById('iconGrid');
+      grid.innerHTML = '';
+      
+      iconSizes.forEach(({ size, name, purpose }) => {
+        const item = document.createElement('div');
+        item.className = 'icon-item';
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        
+        drawIcon(canvas, size);
+        
+        const title = document.createElement('p');
+        title.textContent = name;
+        
+        const desc = document.createElement('span');
+        desc.textContent = `${size}x${size} px - ${purpose}`;
+        
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = name;
+        link.innerHTML = '<button>⬇️ Descargar</button>';
+        
+        item.appendChild(canvas);
+        item.appendChild(title);
+        item.appendChild(desc);
+        item.appendChild(link);
+        grid.appendChild(item);
+      });
+    }
+    
+    function downloadAll() {
+      const zip = new JSZip();
+      const promises = iconSizes.map(({ size, name }) => {
+        return new Promise(resolve => {
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          drawIcon(canvas, size);
+          canvas.toBlob(blob => {
+            zip.file(name, blob);
+            resolve();
+          }, 'image/png');
+        });
+      });
+      
+      Promise.all(promises).then(() => {
+        zip.generateAsync({ type: 'blob' }).then(content => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(content);
+          link.download = 'pwa-icons.zip';
+          link.click();
+        });
+      });
+    }
+    
+    function regenerateIcons() {
+      generateIcons();
+    }
+    
+    // Generar íconos al cargar
+    window.onload = generateIcons;
+  </script>
+</body>
+</html>

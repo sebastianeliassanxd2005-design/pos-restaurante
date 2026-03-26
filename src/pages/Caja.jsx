@@ -186,30 +186,128 @@ function Caja() {
       }
 
       toast.success('Pago procesado correctamente - Mesa liberada')
+      
+      // Guardar la orden para imprimir después
+      const paidOrder = { ...selectedOrder, status: 'paid' }
+      
       setShowPaymentModal(false)
       setSelectedOrder(null)
       fetchOrders()
       fetchDailyTotal()
+      
+      // Preguntar si quiere imprimir ticket
+      setTimeout(() => {
+        if (confirm('¿Desea imprimir el ticket?')) {
+          printReceipt(paidOrder)
+        }
+      }, 500)
     } catch (error) {
       console.error('Error:', error)
       toast.error('Error al procesar pago: ' + error.message)
     }
   }
 
-  function printReceipt(order) {
-    const ticketWindow = window.open('', '_blank')
-    ticketWindow.document.write(`
-      <html><head><title>Recibo #${order.id.slice(0, 8)}</title>
-      <style>body{font-family:monospace;padding:20px;} h1,h2{color:#000;}</style></head>
-      <body><h1>🍽️ POS Restaurante</h1><hr/>
-      <p><strong>Recibo:</strong> #${order.id.slice(0, 8)}</p>
-      <p><strong>Mesa:</strong> ${order.tables?.name || 'N/A'}</p>
-      <p><strong>Total:</strong> $${parseFloat(order.total || 0).toFixed(2)}</p>
-      <p><strong>Método:</strong> ${order.payment_method || 'Efectivo'}</p>
-      <hr/><p>¡Gracias!</p></body></html>
-    `)
-    ticketWindow.document.close()
-    ticketWindow.print()
+  async function printReceipt(order) {
+    try {
+      // Obtener items de la orden
+      const { data: items } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('order_id', order.id)
+      
+      const fecha = new Date(order.paid_at || order.created_at).toLocaleString('es-EC')
+      const ruc = '1234567890001'  // Configurable por restaurante
+      
+      const ticketWindow = window.open('', '_blank', 'width=300,height=600')
+      
+      const itemsHTML = items?.map(item => `
+        <tr>
+          <td style="text-align: left; padding: 4px 0;">${item.quantity} x ${item.product_name?.substring(0, 20)}</td>
+          <td style="text-align: right;">$${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="2">Sin items</td></tr>'
+      
+      const subtotal = order.total || 0
+      const iva = subtotal * 0.12
+      const total = subtotal
+      
+      ticketWindow.document.write(`
+        <html>
+          <head>
+            <title>Ticket #${order.id.slice(0, 8)}</title>
+            <style>
+              @media print {
+                body { margin: 0; padding: 0; }
+              }
+              body {
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                padding: 10px;
+                width: 300px;
+                max-width: 300px;
+              }
+              .header { text-align: center; margin-bottom: 10px; }
+              .header h2 { margin: 5px 0; font-size: 16px; }
+              .info { margin-bottom: 10px; font-size: 11px; }
+              .divider { border-top: 1px dashed #000; margin: 8px 0; }
+              table { width: 100%; border-collapse: collapse; font-size: 11px; }
+              td { padding: 3px 0; }
+              .total { font-size: 14px; font-weight: bold; text-align: right; margin-top: 10px; }
+              .footer { text-align: center; margin-top: 15px; font-size: 11px; }
+              .thank-you { font-size: 14px; font-weight: bold; margin-top: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h2>🍽️ POS Restaurante</h2>
+              <div class="info">
+                <div>RUC: ${ruc}</div>
+                <div>Fecha: ${fecha}</div>
+              </div>
+            </div>
+            
+            <div class="info">
+              <div><strong>Ticket:</strong> #${order.id.slice(0, 8).toUpperCase()}</div>
+              <div><strong>Mesa:</strong> ${order.tables?.name || 'N/A'}</div>
+              <div><strong>Método:</strong> ${getPaymentMethodLabel(order.payment_method)}</div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <table>
+              ${itemsHTML}
+            </table>
+            
+            <div class="divider"></div>
+            
+            <div class="total">
+              TOTAL: $${parseFloat(total).toFixed(2)}
+            </div>
+            
+            <div class="thank-you">
+              ¡Gracias por su visita!
+            </div>
+            
+            <div class="footer">
+              <div>Vuelva pronto</div>
+            </div>
+            
+            <script>
+              window.onload = function() {
+                window.print();
+                // Cerrar después de imprimir (opcional)
+                // setTimeout(() => window.close(), 1000);
+              };
+            </script>
+          </body>
+        </html>
+      `)
+      
+      ticketWindow.document.close()
+    } catch (error) {
+      console.error('Error al imprimir ticket:', error)
+      toast.error('Error al imprimir: ' + error.message)
+    }
   }
 
   async function viewOrderDetails(order) {
